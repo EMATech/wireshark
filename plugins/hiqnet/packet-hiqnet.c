@@ -60,7 +60,6 @@ static int proto_hiqnet = -1;
 static int hf_hiqnet_version = -1;
 
 static gint ett_hiqnet = -1;
-static gint ett_hiqnet_header = -1;
 static gint ett_hiqnet_flags = -1;
 
 static int hf_hiqnet_headerlen = -1;
@@ -86,6 +85,7 @@ static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     guint8 headerlen = tvb_get_guint8(tvb, 1);
+    guint32 messagelen = tvb_get_ntohl(tvb, 2);
     guint16 srcdev = tvb_get_ntohs(tvb, 7);
     guint32 srcaddr = tvb_get_ntohl(tvb, 9);
     guint16 dstdev = tvb_get_ntohs(tvb, 13);
@@ -107,7 +107,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_flags_tree = NULL;
         gint offset = 0;
 
-        ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, -1, ENC_NA);
+        ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
         proto_item_append_text(ti, ", Msg: %s",
                 val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
         proto_item_append_text(ti, ", Src %u.%u",
@@ -156,8 +156,9 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
         // TODO: Optional headers
 
-        // TODO: Payload(s)
-
+        // Payload(s)
+        proto_tree_add_subtree(hiqnet_tree, tvb, headerlen, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
+        // TODO: decode payloads
     }
 }
 
@@ -279,7 +280,6 @@ proto_register_hiqnet(void)
     /* Setup protocol subtree array */
     static gint *ett[] = {
         &ett_hiqnet,
-        &ett_hiqnet_header,
         &ett_hiqnet_flags,
     };
 
