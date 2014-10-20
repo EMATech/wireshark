@@ -86,12 +86,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     guint8 headerlen = tvb_get_guint8(tvb, 1);
     guint32 messagelen = tvb_get_ntohl(tvb, 2);
-    guint16 srcdev = tvb_get_ntohs(tvb, 7);
-    guint32 srcaddr = tvb_get_ntohl(tvb, 9);
-    guint16 dstdev = tvb_get_ntohs(tvb, 13);
-    guint32 dstaddr = tvb_get_ntohl(tvb, 15);
-    guint16 messageid = tvb_get_ntohs(tvb, 19);
-    guint16 flags = tvb_get_ntohs(tvb, 21);
+    guint16 srcdev = tvb_get_ntohs(tvb, 6);
+    guint32 srcaddr = tvb_get_ntohl(tvb, 8);
+    guint16 dstdev = tvb_get_ntohs(tvb, 12);
+    guint32 dstaddr = tvb_get_ntohl(tvb, 14);
+    guint16 messageid = tvb_get_ntohs(tvb, 18);
+    guint16 flags = tvb_get_ntohs(tvb, 20);
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -122,7 +122,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         // Standard header
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_version, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
-        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_LITTLE_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messagelen, tvb, offset, 4, ENC_BIG_ENDIAN);
         offset += 4;
