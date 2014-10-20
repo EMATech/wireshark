@@ -27,6 +27,7 @@
 #define HIQNET_ACK_FLAG         0x0002
 #define HIQNET_INFO_FLAG        0x0004
 #define HIQNET_ERROR_FLAG       0x0008
+#define HIQNET_GUARANTEED_FLAG  0x0010
 #define HIQNET_MULTIPART_FLAG   0x0040
 #define HIQNET_SESSION_FLAG     0x0100
 
@@ -59,6 +60,8 @@ static int proto_hiqnet = -1;
 static int hf_hiqnet_version = -1;
 
 static gint ett_hiqnet = -1;
+static gint ett_hiqnet_header = -1;
+static gint ett_hiqnet_flags = -1;
 
 static int hf_hiqnet_headerlen = -1;
 static int hf_hiqnet_messagelen = -1;
@@ -72,6 +75,7 @@ static int hf_hiqnet_reqack_flag = -1;
 static int hf_hiqnet_ack_flag = -1;
 static int hf_hiqnet_info_flag = -1;
 static int hf_hiqnet_error_flag = -1;
+static int hf_hiqnet_guaranteed_flag = -1;
 static int hf_hiqnet_multipart_flag = -1;
 static int hf_hiqnet_session_flag = -1;
 static int hf_hiqnet_hopcnt = -1;
@@ -81,11 +85,13 @@ static int hf_hiqnet_seqnum = -1;
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    guint16 srcdev = tvb_get_guint8(tvb, 7);
-    guint32 srcaddr = tvb_get_guint8(tvb, 9);
-    guint16 dstdev = tvb_get_guint8(tvb, 13);
-    guint32 dstaddr = tvb_get_guint8(tvb, 15);
-    guint16 messageid = tvb_get_guint8(tvb, 19);
+    guint8 headerlen = tvb_get_guint8(tvb, 1);
+    guint16 srcdev = tvb_get_ntohs(tvb, 7);
+    guint32 srcaddr = tvb_get_ntohl(tvb, 9);
+    guint16 dstdev = tvb_get_ntohs(tvb, 13);
+    guint32 dstaddr = tvb_get_ntohl(tvb, 15);
+    guint16 messageid = tvb_get_ntohs(tvb, 19);
+    guint16 flags = tvb_get_ntohs(tvb, 21);
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -96,6 +102,9 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     if (tree) { /* we are being asked for details */
         proto_item *ti = NULL;
         proto_tree *hiqnet_tree = NULL;
+        proto_tree *hiqnet_header_tree = NULL;
+        proto_item *hiqnet_flags = NULL;
+        proto_tree *hiqnet_flags_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, -1, ENC_NA);
@@ -107,34 +116,42 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             dstdev, dstaddr);
         hiqnet_tree = proto_item_add_subtree(ti, ett_hiqnet);
 
+        /* Header subtree */
+        hiqnet_header_tree = proto_tree_add_subtree(hiqnet_tree, tvb, 0, headerlen, ett_hiqnet, NULL, "Header");
+
         // Standard header
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_version, tvb, offset, 1, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_version, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_LITTLE_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_LITTLE_ENDIAN);
         offset += 1;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_messagelen, tvb, offset, 4, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messagelen, tvb, offset, 4, ENC_BIG_ENDIAN);
         offset += 4;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_sourcedev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_sourcedev, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_sourceaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_sourceaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
         offset += 4;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_destdev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_destdev, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_destaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_destaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
         offset += 4;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        hiqnet_flags = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
+        // TODO: add message for enabled flags
+        if (flags) {
+            hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags, ett_hiqnet_flags);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        }
         offset += 2;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_hopcnt, tvb, offset, 1, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_hopcnt, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
-        proto_tree_add_item(hiqnet_tree, hf_hiqnet_seqnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_seqnum, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
 
         // TODO: Optional headers
@@ -227,6 +244,12 @@ proto_register_hiqnet(void)
                 NULL, HIQNET_ERROR_FLAG,
                 NULL, HFILL }
         },
+        { &hf_hiqnet_guaranteed_flag,
+            { "Guaranteed flag", "foo.flags.guar",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_GUARANTEED_FLAG,
+                NULL, HFILL }
+        },
         { &hf_hiqnet_multipart_flag,
             { "Multipart flag", "foo.flags.multi",
                 FT_BOOLEAN, 16,
@@ -255,7 +278,9 @@ proto_register_hiqnet(void)
 
     /* Setup protocol subtree array */
     static gint *ett[] = {
-        &ett_hiqnet
+        &ett_hiqnet,
+        &ett_hiqnet_header,
+        &ett_hiqnet_flags,
     };
 
     proto_hiqnet = proto_register_protocol (
