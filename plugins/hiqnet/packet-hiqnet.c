@@ -85,6 +85,7 @@ static int hf_hiqnet_multipart_flag = -1;
 static int hf_hiqnet_session_flag = -1;
 static int hf_hiqnet_hopcnt = -1;
 static int hf_hiqnet_seqnum = -1;
+static int hf_hiqnet_sessnum = -1;
 
 
 static void
@@ -111,6 +112,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_header_tree = NULL;
         proto_item *hiqnet_flags = NULL;
         proto_tree *hiqnet_flags_tree = NULL;
+        proto_tree *hiqnet_session_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -161,6 +163,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset += 2;
 
         /* TODO: Optional headers */
+        if (flags & HIQNET_SESSION_FLAG) {
+            hiqnet_session_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Session");
+            proto_tree_add_item(hiqnet_session_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+        }
 
         /* Payload(s) */
         proto_tree_add_subtree(hiqnet_tree, tvb, headerlen, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
@@ -277,6 +284,12 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_seqnum,
             { "Sequence number", "hiqnet.seqnum",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sessnum,
+            { "Session number", "hiqnet.sessnum",
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
