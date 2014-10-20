@@ -23,6 +23,37 @@
 
 #define HIQNET_PORT 3804
 
+#define HIQNET_REQACK_FLAG      0x0001
+#define HIQNET_ACK_FLAG         0x0002
+#define HIQNET_INFO_FLAG        0x0004
+#define HIQNET_ERROR_FLAG       0x0008
+#define HIQNET_MULTIPART_FLAG   0x0040
+#define HIQNET_SESSION_FLAG     0x0100
+
+static const value_string messageidnames[] = {
+        { 0x0000, "DiscoInfo" },
+        { 0x0002, "GetNetworkInfo" },
+        { 0x0004, "RequestAddress / AddressUsed" },
+        { 0x0006, "SetAddress" },
+        { 0x0007, "Goodbye" },
+        { 0x0008, "Hello" },
+        { 0x010d, "GetAttributes" },
+        { 0x011a, "GetVDList" },
+        { 0x0124, "Store" },
+        { 0x0125, "Recall" },
+        { 0x0129, "Locate" },
+        { 0x0115, "Subscribe Event Log Messages" },
+        { 0x012b, "Unsubscribe Event Log Messages" },
+        { 0x012c, "Request Event Log" },
+        { 0x0100, "MultiParamSet" },
+        { 0x0103, "MultiParamGet" },
+        { 0x010f, "MultiParamSubscribe" },
+        { 0x0112, "MultiParamUnsubscribe" },
+        { 0x0101, "MultiObjectParamSet" },
+        { 0x0102, "ParamSetPercent" },
+        { 0x0111, "ParamSubscribePercent" },
+};
+
 static int proto_hiqnet = -1;
 
 static int hf_hiqnet_version = -1;
@@ -36,33 +67,15 @@ static int hf_hiqnet_sourceaddr = -1; // TODO: decode and combine with dev
 static int hf_hiqnet_destdev = -1;
 static int hf_hiqnet_destaddr = -1; // TODO: decode and combine with dev
 static int hf_hiqnet_messageid = -1;
-static int hf_hiqnet_flags = -1; // TODO: decode
+static int hf_hiqnet_flags = -1;
+static int hf_hiqnet_reqack_flag = -1;
+static int hf_hiqnet_ack_flag = -1;
+static int hf_hiqnet_info_flag = -1;
+static int hf_hiqnet_error_flag = -1;
+static int hf_hiqnet_multipart_flag = -1;
+static int hf_hiqnet_session_flag = -1;
 static int hf_hiqnet_hopcnt = -1;
 static int hf_hiqnet_seqnum = -1;
-
-static const value_string messageidnames[] = {
-    { 0x0000, "DiscoInfo" },
-    { 0x0002, "GetNetworkInfo" },
-    { 0x0004, "RequestAddress / AddressUsed" },
-    { 0x0006, "SetAddress" },
-    { 0x0007, "Goodbye" },
-    { 0x0008, "Hello" },
-    { 0x010d, "GetAttributes" },
-    { 0x011a, "GetVDList" },
-    { 0x0124, "Store" },
-    { 0x0125, "Recall" },
-    { 0x0129, "Locate" },
-    { 0x0115, "Subscribe Event Log Messages" },
-    { 0x012b, "Unsubscribe Event Log Messages" },
-    { 0x012c, "Request Event Log" },
-    { 0x0100, "MultiParamSet" },
-    { 0x0103, "MultiParamGet" },
-    { 0x010f, "MultiParamSubscribe" },
-    { 0x0112, "MultiParamUnsubscribe" },
-    { 0x0101, "MultiObjectParamSet" },
-    { 0x0102, "ParamSetPercent" },
-    { 0x0111, "ParamSubscribePercent" },
-};
 
 
 static void
@@ -99,6 +112,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
         proto_tree_add_item(hiqnet_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
         proto_tree_add_item(hiqnet_tree, hf_hiqnet_hopcnt, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
@@ -169,6 +188,42 @@ proto_register_hiqnet(void)
             { "Flags", "hiqnet.flags",
                 FT_UINT16, BASE_HEX,
                 NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_reqack_flag,
+            { "Request acknowledgement flag", "foo.flags.reqack",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_REQACK_FLAG,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ack_flag,
+            { "Acknowledgement flag", "foo.flags.ack",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_ACK_FLAG,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_info_flag,
+            { "Information flag", "foo.flags.info",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_INFO_FLAG,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_error_flag,
+            { "Error flag", "foo.flags.error",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_ERROR_FLAG,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_multipart_flag,
+            { "Multipart flag", "foo.flags.multi",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_MULTIPART_FLAG,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_session_flag,
+            { "Session flag", "foo.flags.session",
+                FT_BOOLEAN, 16,
+                NULL, HIQNET_SESSION_FLAG,
                 NULL, HFILL }
         },
         { &hf_hiqnet_hopcnt,
