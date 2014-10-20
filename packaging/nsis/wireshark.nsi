@@ -969,6 +969,7 @@ SetOutPath '$INSTDIR\plugins\${VERSION}'
 File "${STAGING_DIR}\plugins\${VERSION}\docsis.dll"
 File "${STAGING_DIR}\plugins\${VERSION}\ethercat.dll"
 File "${STAGING_DIR}\plugins\${VERSION}\gryphon.dll"
+File "${STAGING_DIR}\plugins\${VERSION}\hiqnet.dll"
 File "${STAGING_DIR}\plugins\${VERSION}\irda.dll"
 File "${STAGING_DIR}\plugins\${VERSION}\m2m.dll"
 File "${STAGING_DIR}\plugins\${VERSION}\opcua.dll"
