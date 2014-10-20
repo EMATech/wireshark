@@ -5,16 +5,16 @@
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -32,27 +32,28 @@
 #define HIQNET_SESSION_FLAG     0x0100
 
 static const value_string messageidnames[] = {
-        { 0x0000, "DiscoInfo" },
-        { 0x0002, "GetNetworkInfo" },
-        { 0x0004, "RequestAddress / AddressUsed" },
-        { 0x0006, "SetAddress" },
-        { 0x0007, "Goodbye" },
-        { 0x0008, "Hello" },
-        { 0x010d, "GetAttributes" },
-        { 0x011a, "GetVDList" },
-        { 0x0124, "Store" },
-        { 0x0125, "Recall" },
-        { 0x0129, "Locate" },
-        { 0x0115, "Subscribe Event Log Messages" },
-        { 0x012b, "Unsubscribe Event Log Messages" },
-        { 0x012c, "Request Event Log" },
-        { 0x0100, "MultiParamSet" },
-        { 0x0103, "MultiParamGet" },
-        { 0x010f, "MultiParamSubscribe" },
-        { 0x0112, "MultiParamUnsubscribe" },
-        { 0x0101, "MultiObjectParamSet" },
-        { 0x0102, "ParamSetPercent" },
-        { 0x0111, "ParamSubscribePercent" },
+    { 0x0000, "DiscoInfo" },
+    { 0x0002, "GetNetworkInfo" },
+    { 0x0004, "RequestAddress / AddressUsed" },
+    { 0x0006, "SetAddress" },
+    { 0x0007, "Goodbye" },
+    { 0x0008, "Hello" },
+    { 0x010d, "GetAttributes" },
+    { 0x011a, "GetVDList" },
+    { 0x0124, "Store" },
+    { 0x0125, "Recall" },
+    { 0x0129, "Locate" },
+    { 0x0115, "Subscribe Event Log Messages" },
+    { 0x012b, "Unsubscribe Event Log Messages" },
+    { 0x012c, "Request Event Log" },
+    { 0x0100, "MultiParamSet" },
+    { 0x0103, "MultiParamGet" },
+    { 0x010f, "MultiParamSubscribe" },
+    { 0x0112, "MultiParamUnsubscribe" },
+    { 0x0101, "MultiObjectParamSet" },
+    { 0x0102, "ParamSetPercent" },
+    { 0x0111, "ParamSubscribePercent" },
+    NULL
 };
 
 static int proto_hiqnet = -1;
