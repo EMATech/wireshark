@@ -305,4 +305,5 @@ proto_reg_handoff_hiqnet(void)
 
     hiqnet_handle = create_dissector_handle(dissect_hiqnet, proto_hiqnet);
     dissector_add_uint("udp.port", HIQNET_PORT, hiqnet_handle);
+    dissector_add_uint("tcp.port", HIQNET_PORT, hiqnet_handle);
 }
