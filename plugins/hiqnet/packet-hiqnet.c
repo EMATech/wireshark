@@ -1,6 +1,11 @@
-/*
+/* packet-hiqnet.c
  * Harman HiQnet protocol dissector for Wireshark
- * Copyright (C) 2014 Raphaël Doursenaud <rdoursenaud@free.fr>
+ * By Raphael Doursenaud <rdoursenaud@free.fr>
+ * Copyright 2014 Raphael Doursenaud
+ *
+ * Wireshark - Network traffic analyzer
+ * By Gerald Combs <gerald@wireshark.org>
+ * Copyright 1998 Gerald Combs
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -58,7 +63,7 @@ static const value_string messageidnames[] = {
     { 0x0129, "Locate" },
     { 0x012b, "Unsubscribe Event Log Messages" },
     { 0x012c, "Request Event Log" },
-    { 0, NULL },
+    { 0, NULL }
 };
 
 static const value_string flagnames[] = {
@@ -69,7 +74,7 @@ static const value_string flagnames[] = {
     {HIQNET_GUARANTEED_FLAG, "Guaranteed" },
     {HIQNET_MULTIPART_FLAG, "Multi-part" },
     {HIQNET_SESSION_FLAG, "Session" },
-    { 0, NULL },
+    { 0, NULL }
 };
 
 static int proto_hiqnet = -1;
@@ -379,13 +384,13 @@ proto_register_hiqnet(void)
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
-        },
+        }
     };
 
     /* Setup protocol subtree array */
     static gint *ett[] = {
         &ett_hiqnet,
-        &ett_hiqnet_flags,
+        &ett_hiqnet_flags
     };
 
     proto_hiqnet = proto_register_protocol (
@@ -408,3 +413,15 @@ proto_reg_handoff_hiqnet(void)
     dissector_add_uint("udp.port", HIQNET_PORT, hiqnet_handle);
     dissector_add_uint("tcp.port", HIQNET_PORT, hiqnet_handle);
 }
+
+/*
+ * Editor modelines  -  https://www.wireshark.org/tools/modelines.html
+ *
+ * Local variables:
+ * c-basic-offset: 4
+ * indent-tabs-mode: nil
+ * End:
+ *
+ * vi: set shiftwidth=4 expandtab:
+ * :indentSize=4:noTabs=true:
+ */
