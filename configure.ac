@@ -2951,6 +2951,7 @@ AC_OUTPUT(
   plugins/easy_codec/Makefile
   plugins/ethercat/Makefile
   plugins/gryphon/Makefile
+  plugins/hiqnet/Makefile
   plugins/irda/Makefile
   plugins/m2m/Makefile
   plugins/mate/Makefile
