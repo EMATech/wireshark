@@ -87,6 +87,8 @@ static int hf_hiqnet_hopcnt = -1;
 static int hf_hiqnet_seqnum = -1;
 static int hf_hiqnet_errcode = -1;
 static int hf_hiqnet_errstr = -1;
+static int hf_hiqnet_startseqno = -1;
+static int hf_hiqnet_rembytes = -1;
 static int hf_hiqnet_sessnum = -1;
 
 
@@ -116,6 +118,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_flags_tree = NULL;
         proto_tree *hiqnet_session_tree = NULL;
         proto_tree *hiqnet_error_tree = NULL;
+        proto_tree *hiqnet_multipart_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -165,7 +168,15 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_seqnum, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
 
-        /* TODO: Optional headers */
+        /* Optional headers */
+        if (flags & HIQNET_MULTIPART_FLAG) {
+            /* TODO: rebuild the full message */
+            hiqnet_multipart_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Multi-part");
+            proto_tree_add_item(hiqnet_multipart_tree, hf_hiqnet_startseqno, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_multipart_tree, hf_hiqnet_rembytes, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+        }
         if (flags & HIQNET_SESSION_FLAG) {
             hiqnet_session_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Session");
             proto_tree_add_item(hiqnet_session_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -309,6 +320,18 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_errstr,
             { "Error string", "hiqnet.errstr",
                 FT_STRING, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_startseqno,
+            { "Start seq. no.", "hiqnet.ssno",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_rembytes,
+            { "Remaining bytes", "hiqnet.rembytes",
+                FT_UINT32, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
         },
