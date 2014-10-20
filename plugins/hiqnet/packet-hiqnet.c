@@ -69,9 +69,9 @@ static gint ett_hiqnet_flags = -1;
 static int hf_hiqnet_headerlen = -1;
 static int hf_hiqnet_messagelen = -1;
 static int hf_hiqnet_sourcedev = -1;
-static int hf_hiqnet_sourceaddr = -1; // TODO: decode and combine with dev
+static int hf_hiqnet_sourceaddr = -1; /* TODO: decode and combine with dev */
 static int hf_hiqnet_destdev = -1;
-static int hf_hiqnet_destaddr = -1; // TODO: decode and combine with dev
+static int hf_hiqnet_destaddr = -1; /* TODO: decode and combine with dev */
 static int hf_hiqnet_messageid = -1;
 static int hf_hiqnet_flags = -1;
 static int hf_hiqnet_reqack_flag = -1;
@@ -123,7 +123,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         /* Header subtree */
         hiqnet_header_tree = proto_tree_add_subtree(hiqnet_tree, tvb, 0, headerlen, ett_hiqnet, NULL, "Header");
 
-        // Standard header
+        /* Standard header */
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_version, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_BIG_ENDIAN);
@@ -141,7 +141,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
         hiqnet_flags = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
-        // TODO: add message for enabled flags
+        /* TODO: add message for enabled flags */
         if (flags) {
             hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags, ett_hiqnet_flags);
             proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -158,11 +158,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_seqnum, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
 
-        // TODO: Optional headers
+        /* TODO: Optional headers */
 
-        // Payload(s)
+        /* Payload(s) */
         proto_tree_add_subtree(hiqnet_tree, tvb, headerlen, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
-        // TODO: decode payloads
+        /* TODO: decode payloads */
     }
 }
 
