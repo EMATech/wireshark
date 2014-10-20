@@ -49,6 +49,8 @@ static const value_string messageidnames[] = {
     { 0x010f, "MultiParamSubscribe" },
     { 0x0111, "ParamSubscribePercent" },
     { 0x0112, "MultiParamUnsubscribe" },
+    { 0x0113, "Feedback" },
+    { 0x0113, "ParameterSubscribeAll" },
     { 0x0115, "Subscribe Event Log Messages" },
     { 0x011a, "GetVDList" },
     { 0x0124, "Store" },
