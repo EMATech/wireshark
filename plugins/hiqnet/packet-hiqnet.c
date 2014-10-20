@@ -85,6 +85,8 @@ static int hf_hiqnet_multipart_flag = -1;
 static int hf_hiqnet_session_flag = -1;
 static int hf_hiqnet_hopcnt = -1;
 static int hf_hiqnet_seqnum = -1;
+static int hf_hiqnet_errcode = -1;
+static int hf_hiqnet_errstr = -1;
 static int hf_hiqnet_sessnum = -1;
 
 
@@ -113,6 +115,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_item *hiqnet_flags = NULL;
         proto_tree *hiqnet_flags_tree = NULL;
         proto_tree *hiqnet_session_tree = NULL;
+        proto_tree *hiqnet_error_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -167,6 +170,15 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_session_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Session");
             proto_tree_add_item(hiqnet_session_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
+        }
+        /* According to the spec, error header should always be the last */
+        if (flags & HIQNET_ERROR_FLAG) {
+            /* TODO: mark the erroneous frame */
+            hiqnet_error_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Error");
+            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errcode, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_BIG_ENDIAN);
+            offset = headerlen;
         }
 
         /* Payload(s) */
@@ -285,6 +297,18 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_seqnum,
             { "Sequence number", "hiqnet.seqnum",
                 FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_errcode,
+            { "Error code", "hiqnet.errcode",
+                FT_UINT8, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_errstr,
+            { "Error string", "hiqnet.errstr",
+                FT_STRING, STR_UNICODE,
                 NULL, 0x0,
                 NULL, HFILL }
         },
