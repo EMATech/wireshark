@@ -25,17 +25,66 @@
 
 static int proto_hiqnet = -1;
 
+static int hf_hiqnet_version = -1;
+
+static gint ett_hiqnet = -1;
+
+static int hf_hiqnet_headerlen = -1;
+static int hf_hiqnet_messagelen = -1;
+static int hf_hiqnet_sourcedev = -1;
+static int hf_hiqnet_sourceaddr = -1; // TODO: decode and combine with dev
+static int hf_hiqnet_destdev = -1;
+static int hf_hiqnet_destaddr = -1; // TODO: decode and combine with dev
+static int hf_hiqnet_messageid = -1; // TODO: decode
+static int hf_hiqnet_flags = -1; // TODO: decode
+static int hf_hiqnet_hopcnt = -1;
+static int hf_hiqnet_seqnum = -1;
+
 
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
+    gint offset = 0;
+
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
     col_clear(pinfo->cinfo,COL_INFO);
 
     if (tree) { /* we are being asked for details */
         proto_item *ti = NULL;
+        proto_tree *hiqnet_tree = NULL;
+
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, -1, ENC_NA);
+        hiqnet_tree = proto_item_add_subtree(ti, ett_hiqnet);
+
+        // Standard header
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_version, tvb, offset, 1, ENC_BIG_ENDIAN);
+        offset += 1;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_headerlen, tvb, offset, 1, ENC_LITTLE_ENDIAN);
+        offset += 1;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_messagelen, tvb, offset, 4, ENC_BIG_ENDIAN);
+        offset += 4;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_sourcedev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_sourceaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        offset += 4;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_destdev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_destaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        offset += 4;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_hopcnt, tvb, offset, 1, ENC_BIG_ENDIAN);
+        offset += 1;
+        proto_tree_add_item(hiqnet_tree, hf_hiqnet_seqnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+
+        // TODO: Optional headers
+
+        // TODO: Payload(s)
+
     }
 }
 
@@ -43,11 +92,88 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 void
 proto_register_hiqnet(void)
 {
+    static hf_register_info hf[] = {
+            { &hf_hiqnet_version,
+                    { "Version", "hiqnet.version",
+                            FT_UINT8, BASE_DEC,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_headerlen,
+                        { "Header length", "hiqnet.hlen",
+                                FT_UINT16, BASE_DEC,
+                                NULL, 0x0,
+                                NULL, HFILL }
+            },
+            { &hf_hiqnet_messagelen,
+                    { "Message length", "hiqnet.mlen",
+                            FT_UINT32, BASE_DEC,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_sourcedev,
+                    { "Source device", "hiqnet.srcdev",
+                            FT_UINT8, BASE_DEC_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_sourceaddr,
+                    { "Source address", "hiqnet.srcaddr",
+                            FT_UINT16, BASE_DEC_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_destdev,
+                    { "Destination device", "hiqnet.dstdev",
+                            FT_UINT8, BASE_DEC_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_destaddr,
+                    { "Destination address", "hiqnet.dstaddr",
+                            FT_UINT16, BASE_DEC_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_messageid,
+                    { "Message ID", "hiqnet.msgid",
+                            FT_UINT16, BASE_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_flags,
+                    { "Flags", "hiqnet.flags",
+                            FT_UINT16, BASE_HEX,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_hopcnt,
+                    { "Hop count", "hiqnet.hc",
+                            FT_UINT8, BASE_DEC,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+            { &hf_hiqnet_seqnum,
+                    { "Sequence number", "hiqnet.seqnum",
+                            FT_UINT16, BASE_DEC,
+                            NULL, 0x0,
+                            NULL, HFILL }
+            },
+    };
+
+    /* Setup protocol subtree array */
+    static gint *ett[] = {
+            &ett_hiqnet
+    };
+
     proto_hiqnet = proto_register_protocol (
         "Harman HiQnet", /* name       */
-        "HiQnet",      /* short name */
-        "hiqnet"       /* abbrev     */
-        );
+        "HiQnet",        /* short name */
+        "hiqnet"         /* abbrev     */
+    );
+
+    proto_register_field_array(proto_hiqnet, hf, array_length(hf));
+    proto_register_subtree_array(ett, array_length(ett));
 }
 
 
