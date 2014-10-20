@@ -26,6 +26,12 @@
 
 #include <epan/packet.h>
 
+/*
+ * See
+ *      http://adn.harmanpro.com/site_elements/resources/487_1411413911/HiQnet_third-party_programmers_quick-start_guide_original.pdf
+ *      http://hiqnet.harmanpro.com/content/misc/hiqnet%20third%20party%20programmers%20guide%20v2.pdf
+ */
+
 #define HIQNET_PORT 3804
 
 #define HIQNET_REQACK_FLAG      0x0001
