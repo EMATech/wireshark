@@ -35,10 +35,34 @@ static int hf_hiqnet_sourcedev = -1;
 static int hf_hiqnet_sourceaddr = -1; // TODO: decode and combine with dev
 static int hf_hiqnet_destdev = -1;
 static int hf_hiqnet_destaddr = -1; // TODO: decode and combine with dev
-static int hf_hiqnet_messageid = -1; // TODO: decode
+static int hf_hiqnet_messageid = -1;
 static int hf_hiqnet_flags = -1; // TODO: decode
 static int hf_hiqnet_hopcnt = -1;
 static int hf_hiqnet_seqnum = -1;
+
+static const value_string messageidnames[] = {
+    { 0x0000, "DiscoInfo" },
+    { 0x0002, "GetNetworkInfo" },
+    { 0x0004, "RequestAddress / AddressUsed" },
+    { 0x0006, "SetAddress" },
+    { 0x0007, "Goodbye" },
+    { 0x0008, "Hello" },
+    { 0x010d, "GetAttributes" },
+    { 0x011a, "GetVDList" },
+    { 0x0124, "Store" },
+    { 0x0125, "Recall" },
+    { 0x0129, "Locate" },
+    { 0x0115, "Subscribe Event Log Messages" },
+    { 0x012b, "Unsubscribe Event Log Messages" },
+    { 0x012c, "Request Event Log" },
+    { 0x0100, "MultiParamSet" },
+    { 0x0103, "MultiParamGet" },
+    { 0x010f, "MultiParamSubscribe" },
+    { 0x0112, "MultiParamUnsubscribe" },
+    { 0x0101, "MultiObjectParamSet" },
+    { 0x0102, "ParamSetPercent" },
+    { 0x0111, "ParamSubscribePercent" },
+};
 
 
 static void
@@ -93,77 +117,77 @@ void
 proto_register_hiqnet(void)
 {
     static hf_register_info hf[] = {
-            { &hf_hiqnet_version,
-                    { "Version", "hiqnet.version",
-                            FT_UINT8, BASE_DEC,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_headerlen,
-                        { "Header length", "hiqnet.hlen",
-                                FT_UINT16, BASE_DEC,
-                                NULL, 0x0,
-                                NULL, HFILL }
-            },
-            { &hf_hiqnet_messagelen,
-                    { "Message length", "hiqnet.mlen",
-                            FT_UINT32, BASE_DEC,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_sourcedev,
-                    { "Source device", "hiqnet.srcdev",
-                            FT_UINT8, BASE_DEC_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_sourceaddr,
-                    { "Source address", "hiqnet.srcaddr",
-                            FT_UINT16, BASE_DEC_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_destdev,
-                    { "Destination device", "hiqnet.dstdev",
-                            FT_UINT8, BASE_DEC_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_destaddr,
-                    { "Destination address", "hiqnet.dstaddr",
-                            FT_UINT16, BASE_DEC_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_messageid,
-                    { "Message ID", "hiqnet.msgid",
-                            FT_UINT16, BASE_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_flags,
-                    { "Flags", "hiqnet.flags",
-                            FT_UINT16, BASE_HEX,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_hopcnt,
-                    { "Hop count", "hiqnet.hc",
-                            FT_UINT8, BASE_DEC,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
-            { &hf_hiqnet_seqnum,
-                    { "Sequence number", "hiqnet.seqnum",
-                            FT_UINT16, BASE_DEC,
-                            NULL, 0x0,
-                            NULL, HFILL }
-            },
+        { &hf_hiqnet_version,
+            { "Version", "hiqnet.version",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_headerlen,
+            { "Header length", "hiqnet.hlen",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_messagelen,
+            { "Message length", "hiqnet.mlen",
+                FT_UINT32, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sourcedev,
+            { "Source device", "hiqnet.srcdev",
+                FT_UINT8, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sourceaddr,
+            { "Source address", "hiqnet.srcaddr",
+                FT_UINT16, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_destdev,
+            { "Destination device", "hiqnet.dstdev",
+                FT_UINT8, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_destaddr,
+            { "Destination address", "hiqnet.dstaddr",
+                FT_UINT16, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_messageid,
+            { "Message ID", "hiqnet.msgid",
+                FT_UINT16, BASE_HEX,
+                VALS(messageidnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_flags,
+            { "Flags", "hiqnet.flags",
+                FT_UINT16, BASE_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_hopcnt,
+            { "Hop count", "hiqnet.hc",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_seqnum,
+            { "Sequence number", "hiqnet.seqnum",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
     };
 
     /* Setup protocol subtree array */
     static gint *ett[] = {
-            &ett_hiqnet
+        &ett_hiqnet
     };
 
     proto_hiqnet = proto_register_protocol (
