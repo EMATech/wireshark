@@ -81,17 +81,26 @@ static int hf_hiqnet_seqnum = -1;
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    gint offset = 0;
+    guint16 messageid = tvb_get_guint8(tvb, 19);
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
     col_clear(pinfo->cinfo,COL_INFO);
+    // TODO: add source address
+    // TODO: add destination address
+    col_add_fstr(pinfo->cinfo, COL_INFO, "%s message",
+        val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
 
     if (tree) { /* we are being asked for details */
         proto_item *ti = NULL;
         proto_tree *hiqnet_tree = NULL;
+        gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, -1, ENC_NA);
+        // TODO: add source address
+        // TODO: add destination address
+        proto_item_append_text(ti, ", Message: %s",
+            val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
         hiqnet_tree = proto_item_add_subtree(ti, ett_hiqnet);
 
         // Standard header
