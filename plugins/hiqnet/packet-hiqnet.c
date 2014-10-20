@@ -61,6 +61,17 @@ static const value_string messageidnames[] = {
     { 0, NULL },
 };
 
+static const value_string flagnames[] = {
+    {HIQNET_REQACK_FLAG, "Request Acknowledgement" },
+    {HIQNET_ACK_FLAG, "Acknowlegement" },
+    {HIQNET_INFO_FLAG, "Information" },
+    {HIQNET_ERROR_FLAG, "Error" },
+    {HIQNET_GUARANTEED_FLAG, "Guaranteed" },
+    {HIQNET_MULTIPART_FLAG, "Multi-part" },
+    {HIQNET_SESSION_FLAG, "Session" },
+    { 0, NULL },
+};
+
 static int proto_hiqnet = -1;
 
 static int hf_hiqnet_version = -1;
@@ -151,7 +162,35 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
         hiqnet_flags = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
-        /* TODO: add message for enabled flags */
+        /* Message for enabled flags */
+        if (flags & HIQNET_REQACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
+        }
+        if (flags & HIQNET_ACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_ACK_FLAG, flagnames));
+        }
+        if (flags & HIQNET_INFO_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_INFO_FLAG, flagnames));
+        }
+        if (flags & HIQNET_ERROR_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_ERROR_FLAG, flagnames));
+        }
+        if (flags & HIQNET_GUARANTEED_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_GUARANTEED_FLAG, flagnames));
+        }
+        if (flags & HIQNET_MULTIPART_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                try_val_to_str(HIQNET_MULTIPART_FLAG, flagnames));
+        }
+        if (flags & HIQNET_SESSION_FLAG) {
+            proto_item_append_text(hiqnet_flags, " %s",
+                val_to_str(HIQNET_SESSION_FLAG, flagnames, "Unknown"));
+        }
         if (flags) {
             hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags, ett_hiqnet_flags);
             proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
