@@ -32,6 +32,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
     col_clear(pinfo->cinfo,COL_INFO);
+
+    if (tree) { /* we are being asked for details */
+        proto_item *ti = NULL;
+        ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, -1, ENC_NA);
+    }
 }
 
 
