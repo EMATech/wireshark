@@ -155,6 +155,9 @@ static int hf_hiqnet_subnetmsk = -1;
 static int hf_hiqnet_gateway = -1;
 static int hf_hiqnet_flagmask = -1;
 
+void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
+
+void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
 
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
@@ -167,6 +170,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint32 dstaddr = tvb_get_ntohl(tvb, 14);
     guint16 messageid = tvb_get_ntohs(tvb, 18);
     guint16 flags = tvb_get_ntohs(tvb, 20);
+    guint16 flagmask = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -178,12 +182,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_item *ti = NULL;
         proto_tree *hiqnet_tree = NULL;
         proto_tree *hiqnet_header_tree = NULL;
-        proto_item *hiqnet_flags = NULL;
-        proto_tree *hiqnet_flags_tree = NULL;
+        proto_item *hiqnet_flags_item = NULL;
         proto_tree *hiqnet_session_tree = NULL;
         proto_tree *hiqnet_error_tree = NULL;
         proto_tree *hiqnet_multipart_tree = NULL;
         proto_tree *hiqnet_payload_tree = NULL;
+        proto_item *hiqnet_flagmask_item = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -215,46 +219,9 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        hiqnet_flags = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
-        /* Message for enabled flags */
-        if (flags & HIQNET_REQACK_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
-        }
-        if (flags & HIQNET_ACK_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_ACK_FLAG, flagnames));
-        }
-        if (flags & HIQNET_INFO_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_INFO_FLAG, flagnames));
-        }
-        if (flags & HIQNET_ERROR_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_ERROR_FLAG, flagnames));
-        }
-        if (flags & HIQNET_GUARANTEED_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_GUARANTEED_FLAG, flagnames));
-        }
-        if (flags & HIQNET_MULTIPART_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                try_val_to_str(HIQNET_MULTIPART_FLAG, flagnames));
-        }
-        if (flags & HIQNET_SESSION_FLAG) {
-            proto_item_append_text(hiqnet_flags, " %s",
-                val_to_str(HIQNET_SESSION_FLAG, flagnames, "Unknown"));
-        }
-        if (flags) {
-            hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags, ett_hiqnet_flags);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        }
+        hiqnet_flags_item = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
+        hiqnet_decode_flags(flags, hiqnet_flags_item);
+        hiqnet_display_flags(flags, hiqnet_flags_item, tvb, offset);
         offset += 2;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_hopcnt, tvb, offset, 1, ENC_BIG_ENDIAN);
         offset += 1;
@@ -318,10 +285,59 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_HELLO_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
+            hiqnet_flagmask_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
+            flagmask = tvb_get_ntohs(tvb, offset);
+            hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
+            hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
             offset += 2;
-            /* TODO: decode flag mask */
         }
+    }
+}
+
+
+void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) {/* Message for enabled flags */
+    if (flags & HIQNET_REQACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
+        }
+    if (flags & HIQNET_ACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_ACK_FLAG, flagnames));
+        }
+    if (flags & HIQNET_INFO_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_INFO_FLAG, flagnames));
+        }
+    if (flags & HIQNET_ERROR_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_ERROR_FLAG, flagnames));
+        }
+    if (flags & HIQNET_GUARANTEED_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_GUARANTEED_FLAG, flagnames));
+        }
+    if (flags & HIQNET_MULTIPART_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_MULTIPART_FLAG, flagnames));
+        }
+    if (flags & HIQNET_SESSION_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                val_to_str(HIQNET_SESSION_FLAG, flagnames, "Unknown"));
+        }
+}
+
+
+void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset) {
+    proto_tree *hiqnet_flags_tree = NULL;
+    if (flags) {
+        hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags_item, ett_hiqnet_flags);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
     }
 }
 
