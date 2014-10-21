@@ -181,6 +181,13 @@ static int hf_hiqnet_vdobject = -1;
 static int hf_hiqnet_changetype = -1;
 static int hf_hiqnet_sensrate = -1;
 static int hf_hiqnet_initupd = -1;
+static int hf_hiqnet_subcount = -1;
+static int hf_hiqnet_pubparmid = -1;
+static int hf_hiqnet_subtype = -1;
+static int hf_hiqnet_subaddr = -1;
+static int hf_hiqnet_subparmid = -1;
+static int hf_hiqnet_reserved0 = -1;
+static int hf_hiqnet_reserved1 = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -201,6 +208,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 paramcount = 0;
     guint8 datatype = 0;
     guint8 typelen = 0;
+    guint16 subcount = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -336,6 +344,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             paramcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
+            /* TODO: group each occurence into a subtree */
             while (paramcount > 0) {
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
@@ -361,6 +370,29 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_initupd, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
+        }
+        if (messageid == HIQNET_MULTPARMSUB_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            subcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: group each occurence into a subtree */
+            while (subcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
+                offset += 6;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved0, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved1, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+            }
         }
     }
 }
@@ -684,6 +716,48 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_initupd,
             { "Initial Update", "hiqnet.initupd",
                 FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_subcount,
+            { "No of Subscriptions", "hiqnet.subcount",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_pubparmid,
+            { "Publisher Parameter ID", "hiqnet.pubparmid",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_subtype,
+            { "Subscription Type", "hiqnet.subtype",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_subaddr,
+            { "Subscriber Address", "hiqnet.subaddr",
+                FT_BYTES, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_subparmid,
+            { "Subscriber Parameter ID", "hiqnet.subparmid",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_reserved0,
+            { "Reserved", "hiqnet.reserved0",
+                FT_BYTES, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_reserved1,
+            { "Reserved", "hiqnet.reserved1",
+                FT_BYTES, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         }
