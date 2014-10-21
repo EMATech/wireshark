@@ -391,6 +391,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += 2;
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
+                subcount += 1;
             }
         }
         if (messageid == HIQNET_GOODBYE_MSG) {
