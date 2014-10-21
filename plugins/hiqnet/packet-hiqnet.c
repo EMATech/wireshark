@@ -208,6 +208,9 @@ static int hf_hiqnet_vdclassid = -1;
 static int hf_hiqnet_stract = -1;
 static int hf_hiqnet_strnum = -1;
 static int hf_hiqnet_scope = -1;
+static int hf_hiqnet_recact = -1;
+static int hf_hiqnet_recnum = -1;
+static int hf_hiqnet_strlen = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -440,6 +443,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_GETVDLIST_MSG) {
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
             offset += strlen;
             if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
@@ -463,6 +468,21 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strnum, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+            offset += strlen;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+        }
+        if (messageid == HIQNET_RECALL_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recact, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
             offset += strlen;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
@@ -915,6 +935,24 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_scope,
             { "Scope", "hiqnet.scope",
                 FT_UINT8, BASE_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_recact,
+            { "Recall Action", "hiqnet.rec.act",
+                FT_UINT8, BASE_DEC,
+                VALS(actionnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_recnum,
+            { "Recall Number", "hiqnet.recnum",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { & hf_hiqnet_strlen,
+            { "String lenght", "hiqnet.strlen",
+                FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
         }
