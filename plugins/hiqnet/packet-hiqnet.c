@@ -154,6 +154,8 @@ static int hf_hiqnet_ipaddr = -1;
 static int hf_hiqnet_subnetmsk = -1;
 static int hf_hiqnet_gateway = -1;
 static int hf_hiqnet_flagmask = -1;
+static int hf_hiqnet_paramcount = -1;
+static int hf_hiqnet_paramid = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -171,6 +173,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 messageid = tvb_get_ntohs(tvb, 18);
     guint16 flags = tvb_get_ntohs(tvb, 20);
     guint16 flagmask = 0;
+    guint16 paramcount = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -290,6 +293,16 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
             hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
             offset += 2;
+        }
+        if (messageid == HIQNET_MULTPARMGET_MSG) {
+            paramcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            while (paramcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                paramcount -= 1;
+            }
         }
     }
 }
@@ -560,6 +573,18 @@ proto_register_hiqnet(void)
             { "Flag mask", "hiqnet.flagmask",
                 FT_UINT16, BASE_HEX,
                 NULL, HIQNET_FLAGS_MASK,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_paramcount,
+            { "Parameter count", "hiqnet.paramcount",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_paramid,
+            { "Parameter ID", "hiqnet.paramid",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
                 NULL, HFILL }
         }
     };
