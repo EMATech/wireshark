@@ -34,6 +34,8 @@
 
 #define HIQNET_PORT 3804
 
+#define HIQNET_FLAGS_MASK   0x016f
+
 #define HIQNET_REQACK_FLAG      0x0001
 #define HIQNET_ACK_FLAG         0x0002
 #define HIQNET_INFO_FLAG        0x0004
@@ -106,7 +108,7 @@ static const value_string flagnames[] = {
     {HIQNET_ERROR_FLAG, "Error" },
     {HIQNET_GUARANTEED_FLAG, "Guaranteed" },
     {HIQNET_MULTIPART_FLAG, "Multi-part" },
-    {HIQNET_SESSION_FLAG, "Session" },
+    {HIQNET_SESSION_FLAG, "Session Number" },
     { 0, NULL }
 };
 
@@ -379,7 +381,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_flags,
             { "Flags", "hiqnet.flags",
                 FT_UINT16, BASE_HEX,
-                NULL, 0x0,
+                NULL, HIQNET_FLAGS_MASK,
                 NULL, HFILL }
         },
         { &hf_hiqnet_reqack_flag,
@@ -541,7 +543,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_flagmask,
             { "Flag mask", "hiqnet.flagmask",
                 FT_UINT16, BASE_HEX,
-                NULL, 0x0,
+                NULL, HIQNET_FLAGS_MASK,
                 NULL, HFILL }
         }
     };
