@@ -61,8 +61,8 @@
 #define HIQNET_MULTPARMSUB_MSG      0x010f
 #define HIQNET_PARMSUBPCT_MSG       0x0111
 #define HIQNET_MULTPARMUNSUB_MSG    0x0112
-#define HIQNET_FEEDBACK_MSG         0x0113
 #define HIQNET_PARMSUBALL_MSG       0x0113
+#define HIQNET_PARMUNSUBALL_MSG     0x0114
 #define HIQNET_SUBEVTLOGMSGS_MSG    0x0115
 #define HIQNET_GETVDLIST_MSG        0x011a
 #define HIQNET_STORE_MSG            0x0124
@@ -89,8 +89,8 @@ static const value_string messageidnames[] = {
     { HIQNET_MULTPARMSUB_MSG, "MultiParamSubscribe" },
     { HIQNET_PARMSUBPCT_MSG, "ParamSubscribePercent" },
     { HIQNET_MULTPARMUNSUB_MSG, "MultiParamUnsubscribe" },
-    { HIQNET_FEEDBACK_MSG, "Feedback" },
     { HIQNET_PARMSUBALL_MSG, "ParameterSubscribeAll" },
+    { HIQNET_PARMUNSUBALL_MSG, "ParameterUnSubscribeAll" },
     { HIQNET_SUBEVTLOGMSGS_MSG, "Subscribe Event Log Messages" },
     { HIQNET_GETVDLIST_MSG, "GetVDList" },
     { HIQNET_STORE_MSG, "Store" },
