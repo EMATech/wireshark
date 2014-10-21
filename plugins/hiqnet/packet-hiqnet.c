@@ -42,33 +42,60 @@
 #define HIQNET_MULTIPART_FLAG   0x0040
 #define HIQNET_SESSION_FLAG     0x0100
 
+#define HIQNET_DISCOINFO_MSG        0x0000
+#define HIQNET_RESERVED0_MSG        0x0001
+#define HIQNET_GETNETINFO_MSG       0x0002
+#define HIQNET_RESERVED1_MSG        0x0003
+#define HIQNET_REQADDR_MSG          0x0004
+#define HIQNET_ADDRUSED_MSG         0x0005
+#define HIQNET_SETADDR_MSG          0x0006
+#define HIQNET_GOODBYE_MSG          0x0007
+#define HIQNET_HELLO_MSG            0x0008
+#define HIQNET_MULTPARMSET_MSG      0x0100
+#define HIQNET_MULTOBJPARMSET_MSG   0x0101
+#define HIQNET_PARMSETPCT_MSG       0x0102
+#define HIQNET_MULTPARMGET_MSG      0x0103
+#define HIQNET_GETATTR_MSG          0x010d
+#define HIQNET_MULTPARMSUB_MSG      0x010f
+#define HIQNET_PARMSUBPCT_MSG       0x0111
+#define HIQNET_MULTPARMUNSUB_MSG    0x0112
+#define HIQNET_FEEDBACK_MSG         0x0113
+#define HIQNET_PARMSUBALL_MSG       0x0113
+#define HIQNET_SUBEVTLOGMSGS_MSG    0x0115
+#define HIQNET_GETVDLIST_MSG        0x011a
+#define HIQNET_STORE_MSG            0x0124
+#define HIQNET_RECALL_MSG           0x0125
+#define HIQNET_LOCATE_MSG           0x0129
+#define HIQNET_UNSUBEVTLOGMSGS_MSG  0x012b
+#define HIQNET_REQEVTLOG_MSG        0x012c
+
 static const value_string messageidnames[] = {
-    { 0x0000, "DiscoInfo" },
-    { 0x0001, "Reserved" },
-    { 0x0002, "GetNetworkInfo" },
-    { 0x0003, "Reserved" },
-    { 0x0004, "RequestAddress" },
-    { 0x0005, "AddressUsed" },
-    { 0x0006, "SetAddress" },
-    { 0x0007, "Goodbye" },
-    { 0x0008, "Hello" },
-    { 0x0100, "MultiParamSet" },
-    { 0x0101, "MultiObjectParamSet" },
-    { 0x0102, "ParamSetPercent" },
-    { 0x0103, "MultiParamGet" },
-    { 0x010d, "GetAttributes" },
-    { 0x010f, "MultiParamSubscribe" },
-    { 0x0111, "ParamSubscribePercent" },
-    { 0x0112, "MultiParamUnsubscribe" },
-    { 0x0113, "Feedback" },
-    { 0x0113, "ParameterSubscribeAll" },
-    { 0x0115, "Subscribe Event Log Messages" },
-    { 0x011a, "GetVDList" },
-    { 0x0124, "Store" },
-    { 0x0125, "Recall" },
-    { 0x0129, "Locate" },
-    { 0x012b, "Unsubscribe Event Log Messages" },
-    { 0x012c, "Request Event Log" },
+    { HIQNET_DISCOINFO_MSG, "DiscoInfo" },
+    { HIQNET_RESERVED0_MSG, "Reserved" },
+    { HIQNET_GETNETINFO_MSG, "GetNetworkInfo" },
+    { HIQNET_RESERVED1_MSG, "Reserved" },
+    { HIQNET_REQADDR_MSG, "RequestAddress" },
+    { HIQNET_ADDRUSED_MSG, "AddressUsed" },
+    { HIQNET_SETADDR_MSG, "SetAddress" },
+    { HIQNET_GOODBYE_MSG, "Goodbye" },
+    { HIQNET_HELLO_MSG, "Hello" },
+    { HIQNET_MULTPARMSET_MSG, "MultiParamSet" },
+    { HIQNET_MULTOBJPARMSET_MSG, "MultiObjectParamSet" },
+    { HIQNET_PARMSETPCT_MSG, "ParamSetPercent" },
+    { HIQNET_MULTPARMGET_MSG, "MultiParamGet" },
+    { HIQNET_GETATTR_MSG, "GetAttributes" },
+    { HIQNET_MULTPARMSUB_MSG, "MultiParamSubscribe" },
+    { HIQNET_PARMSUBPCT_MSG, "ParamSubscribePercent" },
+    { HIQNET_MULTPARMUNSUB_MSG, "MultiParamUnsubscribe" },
+    { HIQNET_FEEDBACK_MSG, "Feedback" },
+    { HIQNET_PARMSUBALL_MSG, "ParameterSubscribeAll" },
+    { HIQNET_SUBEVTLOGMSGS_MSG, "Subscribe Event Log Messages" },
+    { HIQNET_GETVDLIST_MSG, "GetVDList" },
+    { HIQNET_STORE_MSG, "Store" },
+    { HIQNET_RECALL_MSG, "Recall" },
+    { HIQNET_LOCATE_MSG, "Locate" },
+    { HIQNET_UNSUBEVTLOGMSGS_MSG, "Unsubscribe Event Log Messages" },
+    { HIQNET_REQEVTLOG_MSG, "Request Event Log" },
     { 0, NULL }
 };
 
