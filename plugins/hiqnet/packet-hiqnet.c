@@ -112,6 +112,24 @@ static const value_string flagnames[] = {
     { 0, NULL }
 };
 
+static const value_string datatypenames[] = {
+    { 0, "BYTE" },
+    { 1, "UBYTE" },
+    { 2, "WORD" },
+    { 3, "UWORD" },
+    { 4, "LONG" },
+    { 5, "ULONG" },
+    { 6, "FLOAT32" },
+    { 7, "FLOAT64" },
+    { 8, "BLOCK" },
+    { 9, "STRING" },
+    { 10, "LONG64" },
+    { 11, "ULONG64" },
+    { 0, NULL }
+};
+
+static const guint8 hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, 0, 0, 8, 8 };
+
 static int proto_hiqnet = -1;
 
 static int hf_hiqnet_version = -1;
@@ -156,6 +174,8 @@ static int hf_hiqnet_gateway = -1;
 static int hf_hiqnet_flagmask = -1;
 static int hf_hiqnet_paramcount = -1;
 static int hf_hiqnet_paramid = -1;
+static int hf_hiqnet_datatype = -1;
+static int hf_hiqnet_value = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -174,6 +194,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 flags = tvb_get_ntohs(tvb, 20);
     guint16 flagmask = 0;
     guint16 paramcount = 0;
+    guint8 datatype = 0;
+    guint8 typelen = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -301,6 +323,23 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             while (paramcount > 0) {
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
+                paramcount -= 1;
+            }
+        }
+        if (messageid == HIQNET_MULTPARMSET_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            paramcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            while (paramcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                datatype = tvb_get_guint8(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datatype, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                typelen = hiqnet_datasize_per_type[datatype];
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_value, tvb, offset, typelen, ENC_BIG_ENDIAN);
+                offset += typelen;
                 paramcount -= 1;
             }
         }
@@ -584,6 +623,18 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_paramid,
             { "Parameter ID", "hiqnet.paramid",
                 FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_paramid,
+            { "Data type", "hiqnet.datatype",
+                FT_UINT8, BASE_HEX,
+                VALS(datatypenames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_value,
+            { "Value", "hiqnet.value",
+                FT_BYTES, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         }
