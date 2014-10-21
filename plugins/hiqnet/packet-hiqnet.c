@@ -159,7 +159,6 @@ static int hf_hiqnet_errstr = -1;
 static int hf_hiqnet_startseqno = -1;
 static int hf_hiqnet_rembytes = -1;
 static int hf_hiqnet_sessnum = -1;
-static int hf_hiqnet_node = -1;
 static int hf_hiqnet_cost = -1;
 static int hf_hiqnet_sernumlen = -1;
 static int hf_hiqnet_sernum = -1;
@@ -295,7 +294,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_tree, tvb, offset, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
         /* TODO: decode payloads */
         if (messageid == HIQNET_DISCOINFO_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_node, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
@@ -393,6 +392,10 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
             }
+        }
+        if (messageid == HIQNET_GOODBYE_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
         }
     }
 }
@@ -583,12 +586,6 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_sessnum,
             { "Session number", "hiqnet.sessnum",
-                FT_UINT16, BASE_DEC,
-                NULL, 0x0,
-                NULL, HFILL }
-        },
-        { &hf_hiqnet_node,
-            { "Node", "hiqnet.node",
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
