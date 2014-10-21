@@ -191,6 +191,10 @@ static int hf_hiqnet_attrcount = -1;
 static int hf_hiqnet_attrid = -1;
 static int hf_hiqnet_datalen = -1;
 static int hf_hiqnet_string = -1;
+static int hf_hiqnet_wrkgrppath = -1;
+static int hf_hiqnet_numvds = -1;
+static int hf_hiqnet_vdaddr = -1;
+static int hf_hiqnet_vdclassid = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -213,6 +217,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 paramcount = 0;
     guint16 subcount = 0;
     guint16 attrcount = 0;
+    gint strlen = -1;
+    guint16 vdscount = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -391,7 +397,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += 2;
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                subcount += 1;
+                subcount -= 1;
             }
         }
         if (messageid == HIQNET_GOODBYE_MSG) {
@@ -415,6 +421,25 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
                     attrcount -= 1;
+                }
+            }
+        }
+        if (messageid == HIQNET_GETVDLIST_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+            offset += strlen;
+            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                vdscount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_numvds, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                /* TODO: group each occurence into a subtree */
+                while (vdscount > 0) {
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdaddr, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    offset += 1;
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdclassid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    vdscount -= 1;
                 }
             }
         }
@@ -823,6 +848,30 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_string,
             { "String", "hiqnet.string",
                 FT_STRINGZ, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_wrkgrppath,
+            { "Workgroup Path", "hiqnet.wrkgrppath",
+                FT_STRINGZ, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_numvds,
+            { "Number of Virtual Devices", "hiqnet.numvds",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_vdaddr,
+            { "Virtual Device Address", "hiqnet.vdaddr",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_vdclassid,
+            { "Virtual Device Class ID", "hiqnet.vdclassid",
+                FT_UINT16, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         }
