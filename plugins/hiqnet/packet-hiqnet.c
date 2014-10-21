@@ -128,7 +128,7 @@ static const value_string datatypenames[] = {
     { 0, NULL }
 };
 
-static const guint8 hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, 0, 0, 8, 8 };
+static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
 
@@ -187,10 +187,16 @@ static int hf_hiqnet_subaddr = -1;
 static int hf_hiqnet_subparmid = -1;
 static int hf_hiqnet_reserved0 = -1;
 static int hf_hiqnet_reserved1 = -1;
+static int hf_hiqnet_attrcount = -1;
+static int hf_hiqnet_attrid = -1;
+static int hf_hiqnet_datalen = -1;
+static int hf_hiqnet_string = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
 void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
+
+gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
@@ -205,9 +211,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 flags = tvb_get_ntohs(tvb, 20);
     guint16 flagmask = 0;
     guint16 paramcount = 0;
-    guint8 datatype = 0;
-    guint8 typelen = 0;
     guint16 subcount = 0;
+    guint16 attrcount = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -285,7 +290,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_error_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Error");
             proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errcode, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
-            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_UCS_2);
         }
 
         /* Payload(s) */
@@ -347,12 +352,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             while (paramcount > 0) {
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                datatype = tvb_get_guint8(tvb, offset);
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datatype, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
-                typelen = hiqnet_datasize_per_type[datatype];
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_value, tvb, offset, typelen, ENC_BIG_ENDIAN);
-                offset += typelen;
+                offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
                 paramcount -= 1;
             }
         }
@@ -398,11 +398,54 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
         }
+        if (messageid == HIQNET_GETATTR_MSG) {
+            attrcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            if (flags & HIQNET_INFO_FLAG) { /* This not a request */
+                /* TODO: group each occurence into a subtree */
+                while (attrcount > 0) {
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                    attrcount -= 1;
+                }
+            } else { /* This may be a request */
+                while (attrcount > 0) {
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    attrcount -= 1;
+                }
+            }
+        }
     }
 }
 
 
-void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) {/* Message for enabled flags */
+gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    guint8 datatype = 0;
+    gint datalen = -1;
+
+    datatype = tvb_get_guint8(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datatype, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    datalen = hiqnet_datasize_per_type[datatype];
+    if (datalen < 0) { /* This is a string or a block */
+        datalen = tvb_get_ntohs(tvb, offset);
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datalen, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+    }
+    if (datatype == 9) { /* This is a string */
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_string, tvb, offset, datalen, ENC_UCS_2);
+    } else {
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_value, tvb, offset, datalen, ENC_BIG_ENDIAN);
+    }
+    offset += datalen;
+    return offset;
+}
+
+
+void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) { /* Message for enabled flags */
     if (flags & HIQNET_REQACK_FLAG) {
             proto_item_append_text(hiqnet_flags, ", %s",
                 try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
@@ -569,7 +612,7 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_errstr,
             { "Error string", "hiqnet.errstr",
-                FT_STRING, STR_UNICODE,
+                FT_STRINGZ, STR_UNICODE,
                 NULL, 0x0,
                 NULL, HFILL }
         },
@@ -756,6 +799,30 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_reserved1,
             { "Reserved", "hiqnet.reserved1",
                 FT_BYTES, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_attrcount,
+            { "Attribute count", "hiqnet.attrcount",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_attrid,
+            { "Attribute ID", "hiqnet.attrid",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { & hf_hiqnet_datalen,
+            { "Data lenght", "hiqnet.datalen",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_string,
+            { "String", "hiqnet.string",
+                FT_STRINGZ, STR_UNICODE,
                 NULL, 0x0,
                 NULL, HFILL }
         }
