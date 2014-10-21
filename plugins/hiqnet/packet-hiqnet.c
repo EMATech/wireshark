@@ -128,6 +128,16 @@ static const value_string datatypenames[] = {
     { 0, NULL }
 };
 
+static const value_string actionnames[] = {
+    { 0, "Parameters" },
+    { 1, "Subscriptions" },
+    { 2, "Scenes" },
+    { 3, "Snapshots" },
+    { 4, "Presets" },
+    { 5, "Venue" },
+    { 0, NULL }
+};
+
 static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
@@ -195,6 +205,9 @@ static int hf_hiqnet_wrkgrppath = -1;
 static int hf_hiqnet_numvds = -1;
 static int hf_hiqnet_vdaddr = -1;
 static int hf_hiqnet_vdclassid = -1;
+static int hf_hiqnet_stract = -1;
+static int hf_hiqnet_strnum = -1;
+static int hf_hiqnet_scope = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -442,6 +455,18 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     vdscount -= 1;
                 }
             }
+        }
+        if (messageid == HIQNET_STORE_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stract, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+            offset += strlen;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
         }
     }
 }
@@ -872,6 +897,24 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_vdclassid,
             { "Virtual Device Class ID", "hiqnet.vdclassid",
                 FT_UINT16, BASE_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_stract,
+            { "Store Action", "hiqnet.stract",
+                FT_UINT8, BASE_DEC,
+                VALS(actionnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_strnum,
+            { "Store Number", "hiqnet.strnum",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_scope,
+            { "Scope", "hiqnet.scope",
+                FT_UINT8, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         }
