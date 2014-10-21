@@ -138,6 +138,12 @@ static const value_string actionnames[] = {
     { 0, NULL }
 };
 
+static const value_string timenames[] = {
+    { 0x0000, "Turn off locate LEDs" },
+    { 0xffff, "Turn on locate LEDs" },
+    { 0, NULL }
+};
+
 static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
@@ -211,6 +217,7 @@ static int hf_hiqnet_scope = -1;
 static int hf_hiqnet_recact = -1;
 static int hf_hiqnet_recnum = -1;
 static int hf_hiqnet_strlen = -1;
+static int hf_hiqnet_time = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -325,10 +332,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
+            strlen = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, 16, ENC_BIG_ENDIAN);
-            offset += 16;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
+            offset += strlen;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
             offset += 4;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -488,6 +496,15 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
         }
+        if (messageid == HIQNET_LOCATE_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            strlen = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
+            offset += strlen;
+        }
     }
 }
 
@@ -558,6 +575,78 @@ void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t
         proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+    }
+}
+
+
+void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset) {
+    proto_tree *hiqnet_cats_tree = NULL;
+    if (cats) {
+        hiqnet_cats_tree = proto_item_add_subtree(hiqnet_cats_item, ett_hiqnet_cats);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_app_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_conf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_audionet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_vendornet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_startup_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_dsp_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_misc_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlog_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_foreignproto_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_digio_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlsurf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+    }
+}
+
+
+void hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats) {
+    if (cats & HIQNET_APPLICATION_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_APPLICATION_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_CONF_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_CONF_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_AUDIONET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_AUDIONET_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLNET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_CTRLNET_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_VENDNET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_VENDNET_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_STARTUP_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_STARTUP_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_DSP_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_DSP_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_MISC_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_MISC_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLLOG_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_CTRLLOG_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_FOREIGNPROTO_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_FOREIGNPROTO_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_DIGIO_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_DIGIO_CAT, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLSURF_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(HIQNET_CTRLSURF_CAT, eventcategorynames));
     }
 }
 
@@ -950,10 +1039,16 @@ proto_register_hiqnet(void)
                 NULL, 0x0,
                 NULL, HFILL }
         },
-        { & hf_hiqnet_strlen,
+        { &hf_hiqnet_strlen,
             { "String lenght", "hiqnet.strlen",
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_time,
+            { "Locate time (ms)", "hiqnet.time",
+                FT_UINT16, BASE_DEC,
+                VALS(timenames), 0x0,
                 NULL, HFILL }
         }
     };
