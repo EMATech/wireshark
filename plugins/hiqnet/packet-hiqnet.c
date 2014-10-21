@@ -139,6 +139,18 @@ static int hf_hiqnet_errstr = -1;
 static int hf_hiqnet_startseqno = -1;
 static int hf_hiqnet_rembytes = -1;
 static int hf_hiqnet_sessnum = -1;
+static int hf_hiqnet_node = -1;
+static int hf_hiqnet_cost = -1;
+static int hf_hiqnet_sernumlen = -1;
+static int hf_hiqnet_sernum = -1;
+static int hf_hiqnet_maxmsgsize = -1;
+static int hf_hiqnet_keepaliveperiod = -1;
+static int hf_hiqnet_netid = -1;
+static int hf_hiqnet_macaddr = -1;
+static int hf_hiqnet_dhcp = -1;
+static int hf_hiqnet_ipaddr = -1;
+static int hf_hiqnet_subnetmsk = -1;
+static int hf_hiqnet_gateway = -1;
 
 
 static void
@@ -168,6 +180,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_session_tree = NULL;
         proto_tree *hiqnet_error_tree = NULL;
         proto_tree *hiqnet_multipart_tree = NULL;
+        proto_tree *hiqnet_payload_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -266,12 +279,39 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errcode, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
             proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_BIG_ENDIAN);
-            offset = headerlen;
         }
 
         /* Payload(s) */
-        proto_tree_add_subtree(hiqnet_tree, tvb, headerlen, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
+        offset = headerlen; /* Make sure we are at the payload start */
+        hiqnet_payload_tree = proto_tree_add_subtree(
+            hiqnet_tree, tvb, offset, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
         /* TODO: decode payloads */
+        if (messageid == HIQNET_DISCOINFO_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_node, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, 16, ENC_BIG_ENDIAN);
+            offset += 16;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
+            offset += 6;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_dhcp, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ipaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subnetmsk, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+        }
     }
 }
 
@@ -415,6 +455,78 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_sessnum,
             { "Session number", "hiqnet.sessnum",
                 FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_node,
+            { "Node", "hiqnet.node",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_cost,
+            { "Cost", "hiqnet.cost",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sernumlen,
+            { "Serial number length", "hiqnet.sernumlen",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sernum,
+            { "Serial number", "hiqnet.sernum",
+                FT_BYTES, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_maxmsgsize,
+            { "Max message size", "hiqnet.maxmsgsize",
+                FT_UINT32, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_keepaliveperiod,
+            { "Keepalive period (ms)", "hiqnet.keepaliveperiod",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_netid,
+            { "Network ID", "hiqnet.netid",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_macaddr,
+            { "MAC address", "hiqnet.macaddr",
+                FT_ETHER, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_dhcp,
+            { "DHCP", "hiqnet.dhcp",
+                FT_BOOLEAN, 1,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ipaddr,
+            { "IP Address", "hiqnet.ipaddr",
+                FT_IPv4, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_subnetmsk,
+            { "Subnet mask", "hiqnet.subnetmsk",
+                FT_IPv4, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_gateway,
+            { "Gateway", "hiqnet.gateway",
+                FT_IPv4, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         }
