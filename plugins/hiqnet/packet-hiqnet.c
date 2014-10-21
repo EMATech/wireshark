@@ -176,6 +176,11 @@ static int hf_hiqnet_paramcount = -1;
 static int hf_hiqnet_paramid = -1;
 static int hf_hiqnet_datatype = -1;
 static int hf_hiqnet_value = -1;
+static int hf_hiqnet_nodeid = -1;
+static int hf_hiqnet_vdobject = -1;
+static int hf_hiqnet_changetype = -1;
+static int hf_hiqnet_sensrate = -1;
+static int hf_hiqnet_initupd = -1;
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
@@ -342,6 +347,20 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += typelen;
                 paramcount -= 1;
             }
+        }
+        if (messageid == HIQNET_PARMSUBALL_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: decode VD-OBJECT */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset, 4, ENC_BIG_ENDIAN);
+            offset += 4;
+            /* TODO: can be decoded in two ways (old and new) */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_changetype, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_initupd, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
         }
     }
 }
@@ -635,6 +654,36 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_value,
             { "Value", "hiqnet.value",
                 FT_BYTES, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_nodeid,
+            { "Node ID", "hiqnet.nodeid",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_vdobject,
+            { "Virtual Device Object", "hiqnet.vdobject",
+                FT_UINT32, BASE_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_changetype,
+            { "Change Type", "hiqnet.changetype",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_sensrate,
+            { "Sensor Rate", "hiqnet.sensrate",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_initupd,
+            { "Initial Update", "hiqnet.initupd",
+                FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
         }
