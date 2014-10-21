@@ -151,6 +151,7 @@ static int hf_hiqnet_dhcp = -1;
 static int hf_hiqnet_ipaddr = -1;
 static int hf_hiqnet_subnetmsk = -1;
 static int hf_hiqnet_gateway = -1;
+static int hf_hiqnet_flagmask = -1;
 
 
 static void
@@ -311,6 +312,13 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             offset += 4;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
             offset += 4;
+        }
+        if (messageid == HIQNET_HELLO_MSG) {
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: decode flag mask */
         }
     }
 }
@@ -527,6 +535,12 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_gateway,
             { "Gateway", "hiqnet.gateway",
                 FT_IPv4, BASE_NONE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_flagmask,
+            { "Flag mask", "hiqnet.flagmask",
+                FT_UINT16, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         }
