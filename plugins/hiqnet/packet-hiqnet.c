@@ -626,7 +626,7 @@ proto_register_hiqnet(void)
                 NULL, 0x0,
                 NULL, HFILL }
         },
-        { &hf_hiqnet_paramid,
+        { &hf_hiqnet_datatype,
             { "Data type", "hiqnet.datatype",
                 FT_UINT8, BASE_HEX,
                 VALS(datatypenames), 0x0,
@@ -634,7 +634,7 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_value,
             { "Value", "hiqnet.value",
-                FT_BYTES, BASE_HEX,
+                FT_BYTES, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         }
