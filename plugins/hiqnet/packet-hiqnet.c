@@ -642,6 +642,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 entriescount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
+                /* TODO: group each occurence into a subtree */
                 while (entriescount > 0) {
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
@@ -665,6 +666,20 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     offset += strlen;
                     entriescount -= 1;
                 }
+            }
+        }
+        if (messageid == HIQNET_MULTPARMUNSUB_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            subcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: group each occurence into a subtree */
+            while (subcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                subcount -= 1;
             }
         }
     }
