@@ -86,7 +86,7 @@
 #define HIQNET_UNSUBEVTLOGMSGS_MSG  0x012b
 #define HIQNET_REQEVTLOG_MSG        0x012c
 
-#define HIQNET_TCPIP_NET    0
+#define HIQNET_TCPIP_NET    1
 #define HIQNET_RS232_NET    4
 
 static const value_string messageidnames[] = {
@@ -228,8 +228,8 @@ static const value_string prioritynames[] = {
 
 static const value_string networknames[] = {
     { HIQNET_TCPIP_NET, "TCP/IP" },
-    { 1, "Reserved" },
     { 2, "Reserved" },
+    { 3, "Reserved" },
     { HIQNET_RS232_NET, "RS232" },
     { 0, NULL }
 };
@@ -366,6 +366,9 @@ static int hf_hiqnet_stopbits = -1;
 static int hf_hiqnet_databits = -1;
 static int hf_hiqnet_flowcontrol = -1;
 static int hf_hiqnet_devaddr = -1;
+static int hf_hiqnet_newdevaddr = -1;
+
+gint hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
 gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
@@ -406,7 +409,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 entriescount = 0;
     guint16 objcount = 0;
     guint16 ifacecount = 0;
-    guint netid = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -503,9 +505,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             offset += 4;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
+            offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
         }
         if (messageid == HIQNET_HELLO_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -766,15 +766,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 while (ifacecount > 0) {
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
                     offset += 4;
-                    netid = tvb_get_guint8(tvb, offset);
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
-                    offset += 1;
-                    if (netid == HIQNET_TCPIP_NET) {
-                        offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
-                    }
-                    if (netid == HIQNET_RS232_NET) {
-                        offset = hiqnet_display_rs232netinfo(hiqnet_payload_tree, tvb, offset);
-                    }
+                    offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
                     ifacecount -= 1;
                 }
             }
@@ -784,7 +776,28 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
         }
+        if (messageid == HIQNET_SETADDR_MSG) {
+            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_newdevaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+        }
     }
+}
+
+
+gint hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    guint netid = 0;
+    netid = tvb_get_guint8(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    if (netid == HIQNET_TCPIP_NET) {
+            offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
+    }
+    if (netid == HIQNET_RS232_NET) {
+        offset = hiqnet_display_rs232netinfo(hiqnet_payload_tree, tvb, offset);
+    }
+    return offset;
 }
 
 
@@ -1592,6 +1605,12 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_devaddr,
             { "Device Address", "hiqnet.devaddr",
+                FT_UINT8, BASE_DEC_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_newdevaddr,
+            { "New Device Address", "hiqnet.newdevaddr",
                 FT_UINT8, BASE_DEC_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
