@@ -480,6 +480,9 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             while (paramcount > 0) {
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
+                if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                    offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                }
                 paramcount -= 1;
             }
         }
