@@ -73,6 +73,7 @@
 #define HIQNET_PARMSETPCT_MSG       0x0102
 #define HIQNET_MULTPARMGET_MSG      0x0103
 #define HIQNET_GETATTR_MSG          0x010d
+#define HIQNET_SETATTR_MSG          0x010e /* Reverse engineered. Not part of the official spec. */
 #define HIQNET_MULTPARMSUB_MSG      0x010f
 #define HIQNET_PARMSUBPCT_MSG       0x0111
 #define HIQNET_MULTPARMUNSUB_MSG    0x0112
@@ -106,6 +107,7 @@ static const value_string messageidnames[] = {
     { HIQNET_GETATTR_MSG, "GetAttributes" },
     { HIQNET_MULTPARMSUB_MSG, "MultiParamSubscribe" },
     { HIQNET_PARMSUBPCT_MSG, "ParamSubscribePercent" },
+    { HIQNET_SETATTR_MSG, "SetAttribute" }, /* Reverse engineered. Not part of the official spec. */
     { HIQNET_MULTPARMUNSUB_MSG, "MultiParamUnsubscribe" },
     { HIQNET_PARMSUBALL_MSG, "ParameterSubscribeAll" },
     { HIQNET_PARMUNSUBALL_MSG, "ParameterUnSubscribeAll" },
@@ -641,7 +643,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_LOCATE_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            strlen = tvb_get_ntohs(tvb, offset);
             offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
         }
         if (messageid == HIQNET_SUBEVTLOGMSGS_MSG) {
@@ -780,6 +781,18 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_newdevaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+        }
+        if (messageid == HIQNET_SETATTR_MSG) { /* Reverse engineered. Not part of the official spec. */
+            attrcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: group each occurence into a subtree */
+            while (attrcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                attrcount -= 1;
+            }
         }
     }
 }
