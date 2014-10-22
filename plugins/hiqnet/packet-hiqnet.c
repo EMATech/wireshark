@@ -365,6 +365,7 @@ static int hf_hiqnet_parity = -1;
 static int hf_hiqnet_stopbits = -1;
 static int hf_hiqnet_databits = -1;
 static int hf_hiqnet_flowcontrol = -1;
+static int hf_hiqnet_devaddr = -1;
 
 gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
@@ -777,6 +778,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     ifacecount -= 1;
                 }
             }
+        }
+        if (messageid == HIQNET_REQADDR_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
         }
     }
 }
@@ -1582,6 +1588,12 @@ proto_register_hiqnet(void)
             { "Flowcontrol", "hiqnet.flowcontrol",
                 FT_UINT8, BASE_DEC,
                 VALS(flowcontrolnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_devaddr,
+            { "Device Address", "hiqnet.devaddr",
+                FT_UINT8, BASE_DEC_HEX,
+                NULL, 0x0,
                 NULL, HFILL }
         }
     };
