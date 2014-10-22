@@ -216,6 +216,13 @@ static const value_string eventidnames[] = {
     { 0, NULL }
 };
 
+static const value_string prioritynames[] = {
+    { 0, "Fault" },
+    { 1, "Warning" },
+    { 2, "Information" },
+    { 0, NULL }
+};
+
 static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
@@ -305,6 +312,15 @@ static int hf_hiqnet_ctrlog_cat = -1;
 static int hf_hiqnet_foreignproto_cat = -1;
 static int hf_hiqnet_digio_cat = -1;
 static int hf_hiqnet_ctrlsurf_cat = -1;
+static int hf_hiqnet_entrieslen = -1;
+static int hf_hiqnet_category = -1;
+static int hf_hiqnet_eventid = -1;
+static int hf_hiqnet_priority = -1;
+static int hf_hiqnet_eventseqnum = -1;
+static int hf_hiqnet_eventtime = -1;
+static int hf_hiqnet_eventdate = -1;
+static int hf_hiqnet_eventinfo = -1;
+static int hf_hiqnet_eventadddata = -1;
 
 gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
@@ -334,6 +350,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     gint strlen = -1;
     guint16 vdscount = 0;
     guint32 cats = 0;
+    guint16 entrieslen = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -615,6 +632,37 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_decode_cats(cats, hiqnet_cats_item);
             hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
             offset += 4;
+        }
+        if (messageid == HIQNET_REQEVTLOG_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                entrieslen = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (entrieslen > 0) {
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_priority, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    offset += 1;
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventseqnum, tvb, offset, 4, ENC_BIG_ENDIAN);
+                    offset += 4;
+                    strlen = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventtime, tvb, offset, strlen, ENC_UCS_2);
+                    offset += strlen;
+                    strlen = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventdate, tvb, offset, strlen, ENC_UCS_2);
+                    offset += strlen;
+                    strlen = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventinfo, tvb, offset, strlen, ENC_UCS_2);
+                    offset += strlen;
+                    strlen = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
+                    offset += strlen;
+                    entrieslen -= 1;
+                }
+            }
         }
     }
 }
@@ -1244,6 +1292,60 @@ proto_register_hiqnet(void)
             { "Control Surface Category", "hiqnet.ctrlsurfcat",
                 FT_UINT32, BASE_HEX,
                 NULL, HIQNET_CTRLSURF_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_entrieslen,
+            { "Number of Entries", "hiqnet.entrieslen",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_category,
+            { "Category", "hiqnet.cat",
+                FT_UINT16, BASE_HEX,
+                VALS(eventcategorynames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventid,
+            { "Event ID", "hiqnet.eventid",
+                FT_UINT16, BASE_DEC,
+                VALS(eventidnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_priority,
+            { "Priority", "hiqnet.priority",
+                FT_UINT8, BASE_DEC,
+                VALS(prioritynames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventseqnum,
+            { "Sequence Number", "hiqnet.eventseqnum",
+                FT_UINT32, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventtime,
+            { "Time", "hiqnet.eventtime",
+                FT_STRING, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventdate,
+            { "Date", "hiqnet.eventdate",
+                FT_STRING, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventinfo,
+            { "Information", "hiqnet.information",
+                FT_STRING, STR_UNICODE,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_eventadddata,
+            { "Additional Data", "hiqnet.eventadddata",
+                FT_BYTES, BASE_NONE,
+                NULL, 0x0,
                 NULL, HFILL }
         }
     };
