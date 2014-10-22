@@ -728,6 +728,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
                     paramcount -= 1;
                 }
+            objcount -= 1;
             }
         }
         if (messageid == HIQNET_PARMSETPCT_MSG) {
