@@ -350,7 +350,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     gint strlen = -1;
     guint16 vdscount = 0;
     guint32 cats = 0;
-    guint16 entrieslen = 0;
+    guint16 entriescount = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -636,10 +636,10 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_REQEVTLOG_MSG) {
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                entrieslen = tvb_get_ntohs(tvb, offset);
+                entriescount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                while (entrieslen > 0) {
+                while (entriescount > 0) {
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -660,7 +660,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     strlen = tvb_get_ntohs(tvb, offset);
                     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
                     offset += strlen;
-                    entrieslen -= 1;
+                    entriescount -= 1;
                 }
             }
         }
