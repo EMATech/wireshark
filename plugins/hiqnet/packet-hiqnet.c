@@ -469,6 +469,13 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset += 2;
 
         /* Optional headers */
+        if (flags & HIQNET_ERROR_FLAG) {
+            /* TODO: mark the erroneous frame */
+            hiqnet_error_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Error");
+            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errcode, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_UCS_2);
+        }
         if (flags & HIQNET_MULTIPART_FLAG) {
             /* TODO: rebuild the full message */
             hiqnet_multipart_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Multi-part");
@@ -481,14 +488,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_session_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Session");
             proto_tree_add_item(hiqnet_session_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-        }
-        /* According to the spec, error header should always be the last */
-        if (flags & HIQNET_ERROR_FLAG) {
-            /* TODO: mark the erroneous frame */
-            hiqnet_error_tree = proto_tree_add_subtree(hiqnet_tree, tvb, offset, 2, ett_hiqnet, NULL, "Error");
-            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errcode, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            proto_tree_add_item(hiqnet_error_tree, hf_hiqnet_errstr, tvb, offset, headerlen - offset, ENC_UCS_2);
         }
 
         /* Payload(s) */
