@@ -86,6 +86,9 @@
 #define HIQNET_UNSUBEVTLOGMSGS_MSG  0x012b
 #define HIQNET_REQEVTLOG_MSG        0x012c
 
+#define HIQNET_TCPIP_NET    0
+#define HIQNET_RS232_NET    4
+
 static const value_string messageidnames[] = {
     { HIQNET_DISCOINFO_MSG, "DiscoInfo" },
     { HIQNET_RESERVED0_MSG, "Reserved" },
@@ -224,10 +227,33 @@ static const value_string prioritynames[] = {
 };
 
 static const value_string networknames[] = {
-    { 0, "TCP/IP" },
+    { HIQNET_TCPIP_NET, "TCP/IP" },
     { 1, "Reserved" },
     { 2, "Reserved" },
-    { 4, "RS232" },
+    { HIQNET_RS232_NET, "RS232" },
+    { 0, NULL }
+};
+
+static const value_string paritynames[] = {
+    { 0, "None" },
+    { 1, "Odd" },
+    { 2, "Even" },
+    { 3, "Mark" },
+    { 4, "Space" },
+    { 0, NULL }
+};
+
+static const value_string stopbitsnames[] = {
+    { 0, "1 Bits" },
+    { 1, "1.5 Bits" },
+    { 2, "2 Bits" },
+    { 0, NULL }
+};
+
+static const value_string flowcontrolnames[] = {
+    { 0, "None" },
+    { 1, "Hardware" },
+    { 2, "XON/OFF" },
     { 0, NULL }
 };
 
@@ -332,6 +358,19 @@ static int hf_hiqnet_eventadddata = -1;
 static int hf_hiqnet_objcount = -1;
 static int hf_hiqnet_objdest = -1;
 static int hf_hiqnet_paramval = -1;
+static int hf_hiqnet_ifacecount = -1;
+static int hf_hiqnet_comid = -1;
+static int hf_hiqnet_baudrate = -1;
+static int hf_hiqnet_parity = -1;
+static int hf_hiqnet_stopbits = -1;
+static int hf_hiqnet_databits = -1;
+static int hf_hiqnet_flowcontrol = -1;
+
+gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+
+gint hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+
+gint hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
 gint hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
@@ -365,6 +404,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint32 cats = 0;
     guint16 entriescount = 0;
     guint16 objcount = 0;
+    guint16 ifacecount = 0;
+    guint netid = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -456,27 +497,14 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
-            strlen = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
-            offset += strlen;
+            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
             offset += 4;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
-            offset += 6;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_dhcp, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ipaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
-            offset += 4;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subnetmsk, tvb, offset, 4, ENC_BIG_ENDIAN);
-            offset += 4;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
-            offset += 4;
+            offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
         }
         if (messageid == HIQNET_HELLO_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -614,10 +642,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             strlen = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
-            offset += strlen;
+            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
         }
         if (messageid == HIQNET_SUBEVTLOGMSGS_MSG) {
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
@@ -730,7 +755,73 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 subcount -= 1;
             }
         }
+        if (messageid == HIQNET_GETNETINFO_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                ifacecount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ifacecount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (ifacecount > 0) {
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
+                    offset += 4;
+                    netid = tvb_get_guint8(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    offset += 1;
+                    if (netid == HIQNET_TCPIP_NET) {
+                        offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
+                    }
+                    if (netid == HIQNET_RS232_NET) {
+                        offset = hiqnet_display_rs232netinfo(hiqnet_payload_tree, tvb, offset);
+                    }
+                    ifacecount -= 1;
+                }
+            }
+        }
     }
+}
+
+
+gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
+    offset += 6;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_dhcp, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ipaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subnetmsk, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    return offset;
+}
+
+
+gint hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_comid, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_baudrate, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_parity, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stopbits, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_databits, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flowcontrol, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    return offset;
+}
+
+
+gint hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    gint strlen = -1;
+    strlen = tvb_get_ntohs(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
+    offset += strlen;
+    return offset;
 }
 
 
@@ -1446,9 +1537,51 @@ proto_register_hiqnet(void)
                 NULL, HFILL }
         },
         { &hf_hiqnet_paramval,
-            { "Parameter value (%)", "hiqnet.paramval",
+            { "Parameter Value (%)", "hiqnet.paramval",
                 FT_INT16, BASE_DEC,
                 NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ifacecount,
+            { "Interface Count", "hiqnet.ifacecount",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_comid,
+            { "Com Port Identifier", "hiqnet.comid",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_baudrate,
+            { "Baud Rate", "hiqnet.baudrate",
+                FT_UINT32, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_parity,
+            { "Parity", "hiqnet.parity",
+                FT_UINT8, BASE_DEC,
+                VALS(paritynames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_stopbits,
+            { "Stop Bits", "hiqnet.stopbits",
+                FT_UINT8, BASE_DEC,
+                VALS(stopbitsnames), 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_databits,
+            { "Data Bits", "hiqnet.databits",
+                FT_UINT8, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_flowcontrol,
+            { "Flowcontrol", "hiqnet.flowcontrol",
+                FT_UINT8, BASE_DEC,
+                VALS(flowcontrolnames), 0x0,
                 NULL, HFILL }
         }
     };
