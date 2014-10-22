@@ -323,6 +323,7 @@ static int hf_hiqnet_eventinfo = -1;
 static int hf_hiqnet_eventadddata = -1;
 static int hf_hiqnet_objcount = -1;
 static int hf_hiqnet_objdest = -1;
+static int hf_hiqnet_paramval = -1;
 
 gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
@@ -704,6 +705,21 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
                     paramcount -= 1;
                 }
+            }
+        }
+        if (messageid == HIQNET_PARMSETPCT_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            paramcount = tvb_get_ntohs(tvb, offset);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            /* TODO: group each occurence into a subtree */
+            while (paramcount > 0) {
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                /* FIXME: paramval is in percentage represented as a 1.15 signed fixed point format */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramval, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                paramcount -= 1;
             }
         }
     }
@@ -1399,6 +1415,12 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_objdest,
             { "Object Dest", "hiqnet.objdest",
                 FT_UINT32, BASE_HEX,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_paramval,
+            { "Parameter value (%)", "hiqnet.paramval",
+                FT_INT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
         }
