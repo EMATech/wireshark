@@ -223,6 +223,14 @@ static const value_string prioritynames[] = {
     { 0, NULL }
 };
 
+static const value_string networknames[] = {
+    { 0, "TCP/IP" },
+    { 1, "Reserved" },
+    { 2, "Reserved" },
+    { 4, "RS232" },
+    { 0, NULL }
+};
+
 static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
@@ -1062,7 +1070,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_netid,
             { "Network ID", "hiqnet.netid",
                 FT_UINT8, BASE_DEC,
-                NULL, 0x0,
+                VALS(networknames), 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_macaddr,
