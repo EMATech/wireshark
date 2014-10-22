@@ -305,7 +305,6 @@ static int hf_hiqnet_paramcount = -1;
 static int hf_hiqnet_paramid = -1;
 static int hf_hiqnet_datatype = -1;
 static int hf_hiqnet_value = -1;
-static int hf_hiqnet_nodeid = -1;
 static int hf_hiqnet_vdobject = -1;
 static int hf_hiqnet_changetype = -1;
 static int hf_hiqnet_sensrate = -1;
@@ -496,7 +495,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_tree, tvb, offset, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
         /* TODO: decode payloads */
         if (messageid == HIQNET_DISCOINFO_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
@@ -543,7 +542,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             }
         }
         if (messageid == HIQNET_PARMSUBALL_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             /* TODO: decode VD-OBJECT */
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset, 4, ENC_BIG_ENDIAN);
@@ -568,7 +567,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             }
         }
         if (messageid == HIQNET_GOODBYE_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_nodeid, tvb, offset, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
         }
         if (messageid == HIQNET_GETATTR_MSG) {
@@ -1243,12 +1242,6 @@ proto_register_hiqnet(void)
                 NULL, 0x0,
                 NULL, HFILL }
         },
-        { &hf_hiqnet_nodeid,
-            { "Node ID", "hiqnet.nodeid",
-                FT_UINT16, BASE_DEC,
-                NULL, 0x0,
-                NULL, HFILL }
-        },
         { &hf_hiqnet_vdobject,
             { "Virtual Device Object", "hiqnet.vdobject",
                 FT_UINT32, BASE_HEX,
@@ -1605,13 +1598,13 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_devaddr,
             { "Device Address", "hiqnet.devaddr",
-                FT_UINT8, BASE_DEC_HEX,
+                FT_UINT16, BASE_DEC_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_newdevaddr,
             { "New Device Address", "hiqnet.newdevaddr",
-                FT_UINT8, BASE_DEC_HEX,
+                FT_UINT16, BASE_DEC_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         }
