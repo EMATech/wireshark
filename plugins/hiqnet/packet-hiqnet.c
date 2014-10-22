@@ -1070,7 +1070,7 @@ proto_register_hiqnet(void)
                 NULL, HFILL }
         },
         { &hf_hiqnet_sensrate,
-            { "Sensor Rate", "hiqnet.sensrate",
+            { "Sensor Rate (ms)", "hiqnet.sensrate",
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
