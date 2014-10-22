@@ -44,6 +44,21 @@
 #define HIQNET_MULTIPART_FLAG   0x0040
 #define HIQNET_SESSION_FLAG     0x0100
 
+#define HIQNET_CATEGORIES_MASK  0x00004fff
+
+#define HIQNET_APPLICATION_CAT  0x00000001
+#define HIQNET_CONF_CAT         0x00000002
+#define HIQNET_AUDIONET_CAT     0x00000003
+#define HIQNET_CTRLNET_CAT      0x00000004
+#define HIQNET_VENDNET_CAT      0x00000005
+#define HIQNET_STARTUP_CAT      0x00000006
+#define HIQNET_DSP_CAT          0x00000007
+#define HIQNET_MISC_CAT         0x00000008
+#define HIQNET_CTRLLOG_CAT      0x00000009
+#define HIQNET_FOREIGNPROTO_CAT 0x0000000a
+#define HIQNET_DIGIO_CAT        0x0000000b
+#define HIQNET_CTRLSURF_CAT     0x0000000e
+
 #define HIQNET_DISCOINFO_MSG        0x0000
 #define HIQNET_RESERVED0_MSG        0x0001
 #define HIQNET_GETNETINFO_MSG       0x0002
@@ -144,6 +159,63 @@ static const value_string timenames[] = {
     { 0, NULL }
 };
 
+static const value_string eventcategorynames[] ={
+    { 0, "Unassigned" },
+    { 1, "Application" },
+    { 2, "Configuration" },
+    { 3, "Audio Network" },
+    { 4, "Control Network" },
+    { 5, "Vendor Network" },
+    { 6, "Startup" },
+    { 7, "DSP" },
+    { 8, "Miscellaneous" },
+    { 9, "Control Logic" },
+    { 10, "Foreign Protocol" },
+    { 11, "Digital I/O" },
+    { 12, "Unassigned" },
+    { 13, "Unassigned" },
+    { 14, "Control Surface" },
+    { 15, "Unassigned" },
+    { 16, "Unassigned" },
+    { 17, "Unassigned" },
+    { 18, "Unassigned" },
+    { 19, "Unassigned" },
+    { 20, "Unassigned" },
+    { 21, "Unassigned" },
+    { 22, "Unassigned" },
+    { 23, "Unassigned" },
+    { 24, "Unassigned" },
+    { 25, "Unassigned" },
+    { 26, "Unassigned" },
+    { 27, "Unassigned" },
+    { 28, "Unassigned" },
+    { 29, "Unassigned" },
+    { 30, "Unassigned" },
+    { 31, "Unassigned" },
+    { 0, NULL }
+};
+
+static const value_string eventidnames[] ={
+    { 0x0001, "Invalid Version" },
+    { 0x0002, "Invalid Length" },
+    { 0x0003, "Invalid Virtual Device" },
+    { 0x0004, "Invalid Object" },
+    { 0x0005, "Invalid Parameter" },
+    { 0x0006, "Invalid Message ID" },
+    { 0x0007, "Invalid Value" },
+    { 0x0008, "Resource Unavailable" },
+    { 0x0009, "Unsupported" },
+    { 0x000a, "Invalid Virtual Device Class" },
+    { 0x000b, "Invalid Object Class" },
+    { 0x000c, "Invalid Parameter Class" },
+    { 0x000d, "Invalid Attribute ID" },
+    { 0x000e, "Invalid DataType" },
+    { 0x000f, "Invalid Configuration" },
+    { 0x0010, "Flash Error" },
+    { 0x0011, "Not a Router" },
+    { 0, NULL }
+};
+
 static const gint hiqnet_datasize_per_type[] = { 1, 1, 2, 2, 4, 4, 4, 8, -1, -1, 8, 8 };
 
 static int proto_hiqnet = -1;
@@ -152,6 +224,7 @@ static int hf_hiqnet_version = -1;
 
 static gint ett_hiqnet = -1;
 static gint ett_hiqnet_flags = -1;
+static gint ett_hiqnet_cats = -1;
 
 static int hf_hiqnet_headerlen = -1;
 static int hf_hiqnet_messagelen = -1;
@@ -218,12 +291,30 @@ static int hf_hiqnet_recact = -1;
 static int hf_hiqnet_recnum = -1;
 static int hf_hiqnet_strlen = -1;
 static int hf_hiqnet_time = -1;
+static int hf_hiqnet_maxdatasize = -1;
+static int hf_hiqnet_catfilter = -1;
+static int hf_hiqnet_app_cat = -1;
+static int hf_hiqnet_conf_cat = -1;
+static int hf_hiqnet_audionet_cat = -1;
+static int hf_hiqnet_ctrlnet_cat = -1;
+static int hf_hiqnet_vendnet_cat = -1;
+static int hf_hiqnet_startup_cat = -1;
+static int hf_hiqnet_dsp_cat = -1;
+static int hf_hiqnet_misc_cat = -1;
+static int hf_hiqnet_ctrlog_cat = -1;
+static int hf_hiqnet_foreignproto_cat = -1;
+static int hf_hiqnet_digio_cat = -1;
+static int hf_hiqnet_ctrlsurf_cat = -1;
+
+gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
 
 void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
 
 void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
 
-gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+void hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats);
+
+void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset);
 
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
@@ -242,6 +333,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     guint16 attrcount = 0;
     gint strlen = -1;
     guint16 vdscount = 0;
+    guint32 cats = 0;
 
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
@@ -259,6 +351,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_multipart_tree = NULL;
         proto_tree *hiqnet_payload_tree = NULL;
         proto_item *hiqnet_flagmask_item = NULL;
+        proto_item *hiqnet_cats_item = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -505,6 +598,16 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
             offset += strlen;
         }
+        if (messageid == HIQNET_SUBEVTLOGMSGS_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            cats = tvb_get_ntohl(tvb, offset);
+            hiqnet_cats_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+            hiqnet_decode_cats(cats, hiqnet_cats_item);
+            hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
+            offset += 4;
+        }
     }
 }
 
@@ -587,7 +690,7 @@ void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *t
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_conf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_audionet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_vendornet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_vendnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_startup_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_dsp_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
         proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_misc_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -1050,13 +1153,98 @@ proto_register_hiqnet(void)
                 FT_UINT16, BASE_DEC,
                 VALS(timenames), 0x0,
                 NULL, HFILL }
+        },
+        { &hf_hiqnet_maxdatasize,
+            { "Maximum Data Size", "hiqnet.maxdatasize",
+                FT_UINT16, BASE_DEC,
+                NULL, 0x0,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_catfilter,
+            { "Category Filter", "hiqnet.catfilter",
+                FT_UINT32, BASE_DEC,
+                NULL, HIQNET_CATEGORIES_MASK,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_app_cat,
+            { "Application Category", "hiqnet.appcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_APPLICATION_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_conf_cat,
+            { "Configuration Category", "hiqnet.confcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_CONF_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_audionet_cat,
+            { "Audio Network Category", "hiqnet.audionetcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_AUDIONET_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ctrlnet_cat,
+            { "Control Network Category", "hiqnet.ctrlnetcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_CTRLNET_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_vendnet_cat,
+            { "Vendor Network Category", "hiqnet.vendnetcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_VENDNET_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_startup_cat,
+            { "Startup Category", "hiqnet.startupcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_STARTUP_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_dsp_cat,
+            { "DSP Category", "hiqnet.dspcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_DSP_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_misc_cat,
+            { "Miscellenaous Category", "hiqnet.misccat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_MISC_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ctrlog_cat,
+            { "Control Logic Category", "hiqnet.crtllogcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_CTRLLOG_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_foreignproto_cat,
+            { "Foreign Protocol Category", "hiqnet.foreignprotocat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_FOREIGNPROTO_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_digio_cat,
+            { "Digital I/O Category", "hiqnet.digiocat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_DIGIO_CAT,
+                NULL, HFILL }
+        },
+        { &hf_hiqnet_ctrlsurf_cat,
+            { "Control Surface Category", "hiqnet.ctrlsurfcat",
+                FT_UINT32, BASE_HEX,
+                NULL, HIQNET_CTRLSURF_CAT,
+                NULL, HFILL }
         }
     };
 
     /* Setup protocol subtree array */
     static gint *ett[] = {
         &ett_hiqnet,
-        &ett_hiqnet_flags
+        &ett_hiqnet_flags,
+        &ett_hiqnet_cats
     };
 
     proto_hiqnet = proto_register_protocol (
