@@ -159,7 +159,7 @@ static const value_string timenames[] = {
     { 0, NULL }
 };
 
-static const value_string eventcategorynames[] ={
+static const value_string eventcategorynames[] = {
     { 0, "Unassigned" },
     { 1, "Application" },
     { 2, "Configuration" },
@@ -195,7 +195,7 @@ static const value_string eventcategorynames[] ={
     { 0, NULL }
 };
 
-static const value_string eventidnames[] ={
+static const value_string eventidnames[] = {
     { 0x0001, "Invalid Version" },
     { 0x0002, "Invalid Length" },
     { 0x0003, "Invalid Virtual Device" },
@@ -602,6 +602,14 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
+            cats = tvb_get_ntohl(tvb, offset);
+            hiqnet_cats_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+            hiqnet_decode_cats(cats, hiqnet_cats_item);
+            hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
+            offset += 4;
+        }
+        if (messageid == HIQNET_UNSUBEVTLOGMSGS_MSG) {
+            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             cats = tvb_get_ntohl(tvb, offset);
             hiqnet_cats_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
             hiqnet_decode_cats(cats, hiqnet_cats_item);
