@@ -434,6 +434,13 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_payload_tree = NULL;
         proto_item *hiqnet_flagmask_item = NULL;
         proto_item *hiqnet_cats_item = NULL;
+        proto_tree *hiqnet_parameters_tree = NULL;
+        proto_tree *hiqnet_attributes_tree = NULL;
+        proto_tree *hiqnet_vds_tree = NULL;
+        proto_tree *hiqnet_events_tree = NULL;
+        proto_tree *hiqnet_subscriptions_tree = NULL;
+        proto_tree *hiqnet_objects_tree = NULL;
+        proto_tree *hiqnet_ifaces_tree = NULL;
         gint offset = 0;
 
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
@@ -500,7 +507,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset = headerlen; /* Make sure we are at the payload start */
         hiqnet_payload_tree = proto_tree_add_subtree(
             hiqnet_tree, tvb, offset, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
-        /* TODO: decode payloads */
         if (messageid == HIQNET_DISCOINFO_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
@@ -516,7 +522,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_HELLO_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            hiqnet_flagmask_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
+            hiqnet_flagmask_item = proto_tree_add_item(
+                hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
             flagmask = tvb_get_ntohs(tvb, offset);
             hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
             hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
@@ -526,11 +533,13 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             paramcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
+            hiqnet_parameters_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameters");
             while (paramcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_parameters_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
                 if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                    offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                    offset = hiqnet_display_data(hiqnet_parameters_tree, tvb, offset);
                 }
                 paramcount -= 1;
             }
@@ -540,11 +549,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             paramcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_parameters_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameters");
             while (paramcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_parameters_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                offset = hiqnet_display_data(hiqnet_parameters_tree, tvb, offset);
                 paramcount -= 1;
             }
         }
@@ -567,9 +577,10 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             subcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_subscriptions_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscriptions");
             while (subcount > 0) {
-                offset = hiqnet_display_paramsub(hiqnet_payload_tree, tvb, offset);
+                offset = hiqnet_display_paramsub(hiqnet_subscriptions_tree, tvb, offset);
                 subcount -= 1;
             }
         }
@@ -582,11 +593,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             if (flags & HIQNET_INFO_FLAG) { /* This not a request */
-                /* TODO: group each occurence into a subtree */
+                hiqnet_attributes_tree = proto_tree_add_subtree(
+                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Attributes");
                 while (attrcount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_attributes_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
-                    offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                    offset = hiqnet_display_data(hiqnet_attributes_tree, tvb, offset);
                     attrcount -= 1;
                 }
             } else { /* This may be a request */
@@ -608,11 +620,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 vdscount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_numvds, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                /* TODO: group each occurence into a subtree */
+                hiqnet_vds_tree = proto_tree_add_subtree(
+                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Virtual Devices");
                 while (vdscount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdaddr, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdaddr, tvb, offset, 1, ENC_BIG_ENDIAN);
                     offset += 1;
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdclassid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdclassid, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
                     vdscount -= 1;
                 }
@@ -655,7 +668,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
             cats = tvb_get_ntohl(tvb, offset);
-            hiqnet_cats_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+            hiqnet_cats_item = proto_tree_add_item(
+                hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
             hiqnet_decode_cats(cats, hiqnet_cats_item);
             hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
             offset += 4;
@@ -663,7 +677,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_UNSUBEVTLOGMSGS_MSG) {
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             cats = tvb_get_ntohl(tvb, offset);
-            hiqnet_cats_item = proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+            hiqnet_cats_item = proto_tree_add_item(
+                hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
             hiqnet_decode_cats(cats, hiqnet_cats_item);
             hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
             offset += 4;
@@ -674,27 +689,29 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 entriescount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                /* TODO: group each occurence into a subtree */
+                hiqnet_events_tree = proto_tree_add_subtree(
+                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Events");
                 while (entriescount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_priority, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_priority, tvb, offset, 1, ENC_BIG_ENDIAN);
                     offset += 1;
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventseqnum, tvb, offset, 4, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_eventseqnum, tvb, offset, 4, ENC_BIG_ENDIAN);
                     offset += 4;
                     strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventtime, tvb, offset, strlen, ENC_UCS_2);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_eventtime, tvb, offset, strlen, ENC_UCS_2);
                     offset += strlen;
                     strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventdate, tvb, offset, strlen, ENC_UCS_2);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_eventdate, tvb, offset, strlen, ENC_UCS_2);
                     offset += strlen;
                     strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventinfo, tvb, offset, strlen, ENC_UCS_2);
+                    proto_tree_add_item(hiqnet_events_tree, hf_hiqnet_eventinfo, tvb, offset, strlen, ENC_UCS_2);
                     offset += strlen;
                     strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(
+                        hiqnet_events_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
                     offset += strlen;
                     entriescount -= 1;
                 }
@@ -705,11 +722,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             subcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_subscriptions_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscriptions");
             while (subcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_subscriptions_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_subscriptions_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
                 subcount -= 1;
             }
@@ -719,18 +737,20 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             objcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_objcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_objects_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Objects");
             while (objcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_objdest, tvb, offset, 4, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_objects_tree, hf_hiqnet_objdest, tvb, offset, 4, ENC_BIG_ENDIAN);
                 offset += 4;
                 paramcount = tvb_get_ntohs(tvb, offset);
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_objects_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                /* TODO: group each occurence into a subtree */
+                hiqnet_parameters_tree = proto_tree_add_subtree(
+                    hiqnet_objects_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameters");
                 while (paramcount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_parameters_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                     offset += 2;
-                    offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                    offset = hiqnet_display_data(hiqnet_parameters_tree, tvb, offset);
                     paramcount -= 1;
                 }
             objcount -= 1;
@@ -741,12 +761,13 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             paramcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_parameters_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameters");
             while (paramcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_parameters_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                /* FIXME: paramval is in percentage represented as a 1.15 signed fixed point format */
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramval, tvb, offset, 2, ENC_BIG_ENDIAN);
+                /* TODO: docode paramval is in percentage represented as a 1.15 signed fixed point format */
+                proto_tree_add_item(hiqnet_parameters_tree, hf_hiqnet_paramval, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
                 paramcount -= 1;
             }
@@ -756,9 +777,10 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             subcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_subscriptions_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscriptions");
             while (subcount > 0) {
-                offset = hiqnet_display_paramsub(hiqnet_payload_tree, tvb, offset);
+                offset = hiqnet_display_paramsub(hiqnet_subscriptions_tree, tvb, offset);
                 subcount -= 1;
             }
         }
@@ -769,10 +791,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 ifacecount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ifacecount, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
+                hiqnet_ifaces_tree = proto_tree_add_subtree(
+                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Interfaces");
                 while (ifacecount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(hiqnet_ifaces_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
                     offset += 4;
-                    offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+                    offset = hiqnet_display_netinfo(hiqnet_ifaces_tree, tvb, offset);
                     ifacecount -= 1;
                 }
             }
@@ -792,11 +816,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             attrcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: group each occurence into a subtree */
+            hiqnet_attributes_tree = proto_tree_add_subtree(
+                hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Attributes");
             while (attrcount > 0) {
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(hiqnet_attributes_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_data(hiqnet_payload_tree, tvb, offset);
+                offset = hiqnet_display_data(hiqnet_attributes_tree, tvb, offset);
                 attrcount -= 1;
             }
         }
