@@ -44,6 +44,14 @@
 #define HIQNET_MULTIPART_FLAG   0x0040
 #define HIQNET_SESSION_FLAG     0x0100
 
+#define HIQNET_PARAMETER_FLAGS_MASK    0x016f
+
+#define HIQNET_PARAMETER_SENSOR_FLAG   0x0002
+
+#define HIQNET_SUBSCRIPTION_FLAGS_MASK      0x00000001
+
+#define HIQNET_SUBSCRIPTION_INITUPD_FLAG    0x00000001
+
 #define HIQNET_CATEGORIES_MASK  0x00004fff
 
 #define HIQNET_APPLICATION_CAT  0x00000001
@@ -89,6 +97,43 @@
 
 #define HIQNET_TCPIP_NET    1
 #define HIQNET_RS232_NET    4
+
+static const value_string device_attributes_names[] = {
+    { 0, "Class Name" },
+    { 1, "Name String" },
+    /* Device Manager attributes */
+    { 2, "Flags" },
+    { 3, "Serial Number" },
+    { 4, "Software Version" },
+    { 0, NULL }
+};
+
+static const value_string parameter_attributes_names[] = {
+    { 0, "Data Type" },
+    { 1, "Name String" },
+    { 2, "Minimum Value" },
+    { 3, "Maximum Value" },
+    { 4, "Control Law" },
+    { 5, "Flags" },
+    { 0, NULL }
+};
+
+static const value_string parameter_flags_names[] = {
+    { HIQNET_PARAMETER_SENSOR_FLAG, "Sensor" },
+    { 0, NULL }
+};
+
+static const value_string subscription_flags_names[] = {
+    { HIQNET_SUBSCRIPTION_INITUPD_FLAG, "Send Initial Updates" },
+    { 0, NULL }
+};
+
+static const value_string subscription_types_names[] = {
+    { 0, "ALL" },
+    { 1, "Non-Sensor" },
+    { 2, "Sensor" },
+    { 0, NULL }
+};
 
 static const value_string messageidnames[] = {
     { HIQNET_DISCOINFO_MSG, "DiscoInfo" },
@@ -308,12 +353,11 @@ static int hf_hiqnet_paramid = -1;
 static int hf_hiqnet_datatype = -1;
 static int hf_hiqnet_value = -1;
 static int hf_hiqnet_vdobject = -1;
-static int hf_hiqnet_changetype = -1;
+static int hf_hiqnet_subtype = -1;
 static int hf_hiqnet_sensrate = -1;
-static int hf_hiqnet_initupd = -1;
+static int hf_hiqnet_subflags = -1;
 static int hf_hiqnet_subcount = -1;
 static int hf_hiqnet_pubparmid = -1;
-static int hf_hiqnet_subtype = -1;
 static int hf_hiqnet_subaddr = -1;
 static int hf_hiqnet_subparmid = -1;
 static int hf_hiqnet_reserved0 = -1;
@@ -565,11 +609,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
             offset += 4;
             /* TODO: can be decoded in two ways (old and new) */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_changetype, tvb, offset, 1, ENC_BIG_ENDIAN);
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
             offset += 1;
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_initupd, tvb, offset, 2, ENC_BIG_ENDIAN);
+            /* TODO: decode and display */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subflags, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
         }
         if (messageid == HIQNET_MULTPARMSUB_MSG) {
@@ -920,6 +965,7 @@ hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint off
 }
 
 
+/* TODO: decode flags for attributes and parameters */
 gint
 hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     guint8 datatype = 0;
@@ -1290,7 +1336,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_paramid,
             { "Parameter ID", "hiqnet.paramid",
                 FT_UINT16, BASE_DEC,
-                NULL, 0x0,
+                VALS(parameter_attributes_names), 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_datatype,
@@ -1311,10 +1357,10 @@ proto_register_hiqnet(void)
                 NULL, 0x0,
                 NULL, HFILL }
         },
-        { &hf_hiqnet_changetype,
-            { "Change Type", "hiqnet.changetype",
+        { &hf_hiqnet_subtype,
+            { "Subscription Type", "hiqnet.subtype",
                 FT_UINT8, BASE_DEC,
-                NULL, 0x0,
+                VALS(subscription_types_names), 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_sensrate,
@@ -1323,10 +1369,10 @@ proto_register_hiqnet(void)
                 NULL, 0x0,
                 NULL, HFILL }
         },
-        { &hf_hiqnet_initupd,
-            { "Initial Update", "hiqnet.initupd",
-                FT_UINT16, BASE_DEC,
-                NULL, 0x0,
+        { &hf_hiqnet_subflags,
+            { "Subscription Flags", "hiqnet.subflags",
+                FT_UINT16, BASE_HEX,
+                NULL, HIQNET_SUBSCRIPTION_FLAGS_MASK,
                 NULL, HFILL }
         },
         { &hf_hiqnet_subcount,
@@ -1337,12 +1383,6 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_pubparmid,
             { "Publisher Parameter ID", "hiqnet.pubparmid",
-                FT_UINT16, BASE_DEC,
-                NULL, 0x0,
-                NULL, HFILL }
-        },
-        { &hf_hiqnet_subtype,
-            { "Subscription Type", "hiqnet.subtype",
                 FT_UINT16, BASE_DEC,
                 NULL, 0x0,
                 NULL, HFILL }
@@ -1380,7 +1420,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_attrid,
             { "Attribute ID", "hiqnet.attrid",
                 FT_UINT16, BASE_DEC,
-                NULL, 0x0,
+                VALS(device_attributes_names), 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_datalen,
