@@ -272,9 +272,9 @@ static gint ett_hiqnet_cats = -1;
 static int hf_hiqnet_headerlen = -1;
 static int hf_hiqnet_messagelen = -1;
 static int hf_hiqnet_sourcedev = -1;
-static int hf_hiqnet_sourceaddr = -1; /* TODO: decode and combine with dev */
+static int hf_hiqnet_sourceaddr = -1;
 static int hf_hiqnet_destdev = -1;
-static int hf_hiqnet_destaddr = -1; /* TODO: decode and combine with dev */
+static int hf_hiqnet_destaddr = -1;
 static int hf_hiqnet_messageid = -1;
 static int hf_hiqnet_flags = -1;
 static int hf_hiqnet_reqack_flag = -1;
@@ -357,7 +357,6 @@ static int hf_hiqnet_eventdate = -1;
 static int hf_hiqnet_eventinfo = -1;
 static int hf_hiqnet_eventadddata = -1;
 static int hf_hiqnet_objcount = -1;
-static int hf_hiqnet_objdest = -1;
 static int hf_hiqnet_paramval = -1;
 static int hf_hiqnet_ifacecount = -1;
 static int hf_hiqnet_comid = -1;
@@ -368,6 +367,8 @@ static int hf_hiqnet_databits = -1;
 static int hf_hiqnet_flowcontrol = -1;
 static int hf_hiqnet_devaddr = -1;
 static int hf_hiqnet_newdevaddr = -1;
+
+void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_payload_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset);
 
 static void dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 
@@ -464,11 +465,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_sourcedev, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_sourceaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_sourceaddr, tvb, offset);
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_destdev, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
-        proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_destaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+        hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_destaddr, tvb, offset);
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
@@ -561,8 +562,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (messageid == HIQNET_PARMSUBALL_MSG) {
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
-            /* TODO: decode VD-OBJECT */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset, 4, ENC_BIG_ENDIAN);
+            hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
             offset += 4;
             /* TODO: can be decoded in two ways (old and new) */
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_changetype, tvb, offset, 1, ENC_BIG_ENDIAN);
@@ -740,7 +740,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             while (objcount > 0) {
                 hiqnet_object_tree = proto_tree_add_subtree(
                     hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Object");
-                proto_tree_add_item(hiqnet_object_tree, hf_hiqnet_objdest, tvb, offset, 4, ENC_BIG_ENDIAN);
+                hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_vdobject, tvb, offset);
                 offset += 4;
                 paramcount = tvb_get_ntohs(tvb, offset);
                 proto_tree_add_item(hiqnet_object_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -827,6 +827,15 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         }
     }
 }
+
+
+void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_bytes_format_value(hiqnet_tree, hf_hiqnet, tvb, offset, 4, NULL,
+                "%u.%u.%u.%u",
+                tvb_get_guint8(tvb, offset), /* Virtual Device address */
+                tvb_get_guint8(tvb, offset + 1), /* Object address part 1 */
+                tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
+                tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */}
 
 
 gint
@@ -1088,7 +1097,7 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_sourceaddr,
             { "Source address", "hiqnet.srcaddr",
-                FT_UINT16, BASE_DEC_HEX,
+                FT_BYTES, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         },
@@ -1100,7 +1109,7 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_destaddr,
             { "Destination address", "hiqnet.dstaddr",
-                FT_UINT16, BASE_DEC_HEX,
+                FT_BYTES, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         },
@@ -1298,7 +1307,7 @@ proto_register_hiqnet(void)
         },
         { &hf_hiqnet_vdobject,
             { "Virtual Device Object", "hiqnet.vdobject",
-                FT_UINT32, BASE_HEX,
+                FT_BYTES, BASE_NONE,
                 NULL, 0x0,
                 NULL, HFILL }
         },
@@ -1593,12 +1602,6 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_objcount,
             { "Object Count", "hiqnet.objcount",
                 FT_UINT16, BASE_DEC,
-                NULL, 0x0,
-                NULL, HFILL }
-        },
-        { &hf_hiqnet_objdest,
-            { "Object Dest", "hiqnet.objdest",
-                FT_UINT32, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         },
