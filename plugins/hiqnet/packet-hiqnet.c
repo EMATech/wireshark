@@ -48,6 +48,12 @@
 
 #define HIQNET_PARAMETER_SENSOR_FLAG   0x0002
 
+#define HIQNET_SUBSCRIPTION_TYPE_MASK      0x07
+
+#define HIQNET_SUBSCRIPTION_TYPE_NONSENS   0x01
+#define HIQNET_SUBSCRIPTION_TYPE_SENS      0x02
+#define HIQNET_SUBSCRIPTION_TYPE_ATTR      0x04
+
 #define HIQNET_SUBSCRIPTION_FLAGS_MASK      0x00000001
 
 #define HIQNET_SUBSCRIPTION_INITUPD_FLAG    0x00000001
@@ -129,10 +135,17 @@ static const value_string subscription_flags_names[] = {
     { 0, NULL }
 };
 
-static const value_string subscription_types_names[] = {
+static const value_string subscription_types_oldstyle_names[] = {
     { 0, "ALL" },
     { 1, "Non-Sensor" },
     { 2, "Sensor" },
+    { 0, NULL }
+};
+
+static const value_string subscription_types_names[] = {
+    { HIQNET_SUBSCRIPTION_TYPE_NONSENS, "Non-Sensor Parameters" },
+    { HIQNET_SUBSCRIPTION_TYPE_SENS, "Sensor Parameters" },
+    { HIQNET_SUBSCRIPTION_TYPE_ATTR, "Attributes" },
     { 0, NULL }
 };
 
@@ -1365,11 +1378,19 @@ proto_register_hiqnet(void)
                 NULL, HFILL }
         },
         { &hf_hiqnet_subtype,
-            { "Subscription Type", "hiqnet.subtype",
+            { "Subscription Type (New Style)", "hiqnet.subtype",
                 FT_UINT8, BASE_DEC,
-                VALS(subscription_types_names), 0x0,
+                NULL, HIQNET_SUBSCRIPTION_TYPE_MASK,
                 NULL, HFILL }
         },
+        /* FIXME: decode old style subscription type
+        { &hf_hiqnet_subtypeold,
+            { "Subscription Type (Old Style)", "hiqnet.subtype",
+                FT_UINT8, BASE_DEC,
+                VALS(subscription_types_oldstyle_names), 0x0,
+                NULL, HFILL }
+        },
+        */
         { &hf_hiqnet_sensrate,
             { "Sensor Rate (ms)", "hiqnet.sensrate",
                 FT_UINT16, BASE_DEC,
