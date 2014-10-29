@@ -108,6 +108,7 @@ static const value_string device_attributes_names[] = {
     { 0, NULL }
 };
 
+/* FIXME: decode attributes types separately (Device Manager, Device, Parameter) */
 static const value_string parameter_attributes_names[] = {
     { 0, "Data Type" },
     { 1, "Name String" },
@@ -1342,7 +1343,7 @@ proto_register_hiqnet(void)
         { &hf_hiqnet_paramid,
             { "Parameter ID", "hiqnet.paramid",
                 FT_UINT16, BASE_DEC,
-                VALS(parameter_attributes_names), 0x0,
+                NULL, 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_datatype,
