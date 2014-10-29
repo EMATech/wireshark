@@ -638,6 +638,15 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subflags, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
         }
+        if (messageid == HIQNET_PARMUNSUBALL_MSG) { /* Reverse engineered. Not part of the official spec. */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+            offset += 2;
+            hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
+            offset += 4;
+            /* TODO: can be decoded in two ways (old and new) */
+            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
+            offset += 1;
+        }
         if (messageid == HIQNET_MULTPARMSUB_MSG) {
             /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             subcount = tvb_get_ntohs(tvb, offset);
