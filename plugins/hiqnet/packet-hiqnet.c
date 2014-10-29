@@ -612,7 +612,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             }
         }
         if (messageid == HIQNET_MULTPARMSET_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
             paramcount = tvb_get_ntohs(tvb, offset);
             proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
             offset += 2;
