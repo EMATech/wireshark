@@ -492,6 +492,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
     if (tree) { /* we are being asked for details */
         proto_item *ti = NULL;
+        proto_item *item = NULL;
         proto_tree *hiqnet_tree = NULL;
         proto_tree *hiqnet_header_tree = NULL;
         proto_item *hiqnet_flags_item = NULL;
@@ -530,10 +531,14 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messagelen, tvb, offset, 4, ENC_BIG_ENDIAN);
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_sourcedev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        item = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+        PROTO_ITEM_SET_HIDDEN(item);
         offset += 2;
         hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_sourceaddr, tvb, offset);
         offset += 4;
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_destdev, tvb, offset, 2, ENC_BIG_ENDIAN);
+        item = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+        PROTO_ITEM_SET_HIDDEN(item);
         offset += 2;
         hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_destaddr, tvb, offset);
         offset += 4;
@@ -1730,13 +1735,13 @@ proto_register_hiqnet(void)
                 NULL, HFILL }
         },
         { &hf_hiqnet_devaddr,
-            { "Device Address", "hiqnet.devaddr",
+            { "Device Address", "hiqnet.device",
                 FT_UINT16, BASE_DEC_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
         },
         { &hf_hiqnet_newdevaddr,
-            { "New Device Address", "hiqnet.newdevaddr",
+            { "New Device Address", "hiqnet.device",
                 FT_UINT16, BASE_DEC_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
