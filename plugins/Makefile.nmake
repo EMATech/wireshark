@@ -8,7 +8,6 @@ PLUGIN_LIST = \
 	docsis      \
 	ethercat    \
 	gryphon     \
-	hiqnet      \
 	irda        \
 	m2m         \
 	mate        \

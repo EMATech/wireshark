@@ -46,7 +46,6 @@ PLUGINS= \
 	../../plugins/docsis/docsis.dll \
 	../../plugins/ethercat/ethercat.dll \
 	../../plugins/gryphon/gryphon.dll \
-	../../plugins/hiqnet/hiqnet.dll \
 	../../plugins/irda/irda.dll \
 	../../plugins/m2m/m2m.dll \
 	../../plugins/mate/mate.dll \

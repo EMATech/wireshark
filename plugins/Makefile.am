@@ -26,7 +26,6 @@ SUBDIRS = $(_CUSTOM_SUBDIRS_) \
 	easy_codec \
 	ethercat \
 	gryphon \
-	hiqnet \
 	irda \
 	m2m \
 	mate \

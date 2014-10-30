@@ -783,7 +783,6 @@ if(ENABLE_PLUGINS)
 		plugins/docsis
 		plugins/ethercat
 		plugins/gryphon
-		plugins/hiqnet
 		plugins/irda
 		plugins/m2m
 		plugins/mate
