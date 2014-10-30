@@ -1496,7 +1496,7 @@ proto_register_hiqnet(void)
                 NULL, HFILL }
         },
         { &hf_hiqnet_vdclassid,
-            { "Virtual Device Class ID", "hiqnet.vdclassid",
+            { "Virtual Device Class ID", "hiqnet.vdclassid",
                 FT_UINT16, BASE_HEX,
                 NULL, 0x0,
                 NULL, HFILL }
