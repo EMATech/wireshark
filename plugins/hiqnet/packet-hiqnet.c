@@ -909,11 +909,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
 void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
     proto_tree_add_bytes_format_value(hiqnet_tree, hf_hiqnet, tvb, offset, 4, NULL,
-                "%u.%u.%u.%u",
-                tvb_get_guint8(tvb, offset), /* Virtual Device address */
-                tvb_get_guint8(tvb, offset + 1), /* Object address part 1 */
-                tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
-                tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */}
+        "%u.%u.%u.%u",
+        tvb_get_guint8(tvb, offset), /* Virtual Device address */
+        tvb_get_guint8(tvb, offset + 1), /* Object address part 1 */
+        tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
+        tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */
+}
 
 
 gint
