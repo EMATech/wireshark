@@ -426,32 +426,22 @@ static int hf_hiqnet_flowcontrol = -1;
 static int hf_hiqnet_devaddr = -1;
 static int hf_hiqnet_newdevaddr = -1;
 
-void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_payload_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset);
 
 static void dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
 
-gint hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-gint hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-gint hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-gint hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-
-void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
-
-void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
-
-void hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats);
-
-void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset);
+static void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_payload_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
+static void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
+static void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
+static void hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats);
+static void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset);
 
 void proto_register_hiqnet(void);
-
 void proto_reg_handoff_hiqnet(void);
 
 static void
@@ -907,7 +897,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 }
 
 
-void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
+static void
+hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
     proto_tree_add_bytes_format_value(hiqnet_tree, hf_hiqnet, tvb, offset, 4, NULL,
         "%u.%u.%u.%u",
         tvb_get_guint8(tvb, offset), /* Virtual Device address */
@@ -916,8 +907,7 @@ void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_
         tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */
 }
 
-
-gint
+static gint
 hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     guint netid = 0;
     netid = tvb_get_guint8(tvb, offset);
@@ -933,7 +923,7 @@ hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offs
 }
 
 
-gint
+static gint
 hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
     offset += 6;
@@ -949,7 +939,7 @@ hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint
 }
 
 
-gint
+static gint
 hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_comid, tvb, offset, 1, ENC_BIG_ENDIAN);
     offset += 1;
@@ -967,7 +957,7 @@ hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint
 }
 
 
-gint
+static gint
 hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     gint strlen;
     strlen = tvb_get_ntohs(tvb, offset);
@@ -979,7 +969,7 @@ hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offse
 }
 
 
-gint
+static gint
 hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
     offset += 2;
@@ -1000,7 +990,7 @@ hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint off
 
 
 /* TODO: decode flags for attributes and parameters */
-gint
+static gint
 hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
     guint8 datatype = 0;
     gint datalen;
@@ -1024,7 +1014,7 @@ hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset)
 }
 
 
-void
+static void
 hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) { /* Message for enabled flags */
     if (flags & HIQNET_REQACK_FLAG) {
             proto_item_append_text(hiqnet_flags, ", %s",
@@ -1057,7 +1047,7 @@ hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) { /* Message for en
 }
 
 
-void
+static void
 hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset) {
     proto_tree *hiqnet_flags_tree = NULL;
     if (flags) {
@@ -1073,7 +1063,7 @@ hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb
 }
 
 
-void
+static void
 hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset) {
     proto_tree *hiqnet_cats_tree = NULL;
     if (cats) {
@@ -1094,7 +1084,7 @@ hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, g
 }
 
 
-void
+static void
 hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats) {
     if (cats & HIQNET_APPLICATION_CAT) {
         proto_item_append_text(hiqnet_cats, ", %s",
