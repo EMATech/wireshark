@@ -430,22 +430,249 @@ static int hf_hiqnet_devaddr = -1;
 static int hf_hiqnet_newdevaddr = -1;
 
 
-static void dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree);
-
-static void hiqnet_display_vdobjectaddr(proto_tree *hiqnet_payload_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static gint hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset);
-static void hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags);
-static void hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset);
-static void hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats);
-static void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset);
-
 void proto_register_hiqnet(void);
 void proto_reg_handoff_hiqnet(void);
+
+
+static void
+hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_bytes_format_value(hiqnet_tree, hf_hiqnet, tvb, offset, 4, NULL,
+        "%u.%u.%u.%u",
+        tvb_get_guint8(tvb, offset), /* Virtual Device address */
+        tvb_get_guint8(tvb, offset + 1), /* Object address part 1 */
+        tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
+        tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */
+}
+
+
+static gint
+hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
+    offset += 6;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_dhcp, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ipaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subnetmsk, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    return offset;
+}
+
+
+static gint
+hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_comid, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_baudrate, tvb, offset, 4, ENC_BIG_ENDIAN);
+    offset += 4;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_parity, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stopbits, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_databits, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flowcontrol, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    return offset;
+}
+
+
+static gint
+hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    guint netid = 0;
+    netid = tvb_get_guint8(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    if (netid == HIQNET_TCPIP_NET) {
+            offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
+    }
+    if (netid == HIQNET_RS232_NET) {
+        offset = hiqnet_display_rs232netinfo(hiqnet_payload_tree, tvb, offset);
+    }
+    return offset;
+}
+
+
+static gint
+hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    gint strlen;
+    strlen = tvb_get_ntohs(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
+    offset += strlen;
+    return offset;
+}
+
+
+static gint
+hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
+    offset += 6;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved0, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved1, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
+    offset += 2;
+    return offset;
+}
+
+
+/* TODO: decode flags for attributes and parameters */
+static gint
+hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
+    guint8 datatype = 0;
+    gint datalen;
+
+    datatype = tvb_get_guint8(tvb, offset);
+    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datatype, tvb, offset, 1, ENC_BIG_ENDIAN);
+    offset += 1;
+    datalen = hiqnet_datasize_per_type[datatype];
+    if (datalen < 0) { /* This is a string or a block */
+        datalen = tvb_get_ntohs(tvb, offset);
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datalen, tvb, offset, 2, ENC_BIG_ENDIAN);
+        offset += 2;
+    }
+    if (datatype == 9) { /* This is a string */
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_string, tvb, offset, datalen, ENC_UCS_2);
+    } else {
+        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_value, tvb, offset, datalen, ENC_BIG_ENDIAN);
+    }
+    offset += datalen;
+    return offset;
+}
+
+
+static void
+hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) { /* Message for enabled flags */
+    if (flags & HIQNET_REQACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
+        }
+    if (flags & HIQNET_ACK_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_ACK_FLAG, flagnames));
+        }
+    if (flags & HIQNET_INFO_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_INFO_FLAG, flagnames));
+        }
+    if (flags & HIQNET_ERROR_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_ERROR_FLAG, flagnames));
+        }
+    if (flags & HIQNET_GUARANTEED_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_GUARANTEED_FLAG, flagnames));
+        }
+    if (flags & HIQNET_MULTIPART_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                try_val_to_str(HIQNET_MULTIPART_FLAG, flagnames));
+        }
+    if (flags & HIQNET_SESSION_FLAG) {
+            proto_item_append_text(hiqnet_flags, ", %s",
+                val_to_str(HIQNET_SESSION_FLAG, flagnames, "Unknown"));
+        }
+}
+
+
+static void
+hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset) {
+    proto_tree *hiqnet_flags_tree = NULL;
+    if (flags) {
+        hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags_item, ett_hiqnet_flags);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
+    }
+}
+
+
+static void
+hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset) {
+    proto_tree *hiqnet_cats_tree = NULL;
+    if (cats) {
+        hiqnet_cats_tree = proto_item_add_subtree(hiqnet_cats_item, ett_hiqnet_cats);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_app_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_conf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_audionet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_vendnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_startup_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_dsp_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_misc_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlog_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_foreignproto_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_digio_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlsurf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
+    }
+}
+
+
+static void
+hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats) {
+    if (cats & HIQNET_APPLICATION_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(1, eventcategorynames));
+    }
+    if (cats & HIQNET_CONF_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(2, eventcategorynames));
+    }
+    if (cats & HIQNET_AUDIONET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(3, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLNET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(4, eventcategorynames));
+    }
+    if (cats & HIQNET_VENDNET_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(5, eventcategorynames));
+    }
+    if (cats & HIQNET_STARTUP_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(6, eventcategorynames));
+    }
+    if (cats & HIQNET_DSP_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(7, eventcategorynames));
+    }
+    if (cats & HIQNET_MISC_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(8, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLLOG_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(9, eventcategorynames));
+    }
+    if (cats & HIQNET_FOREIGNPROTO_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(10, eventcategorynames));
+    }
+    if (cats & HIQNET_DIGIO_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(11, eventcategorynames));
+    }
+    if (cats & HIQNET_CTRLSURF_CAT) {
+        proto_item_append_text(hiqnet_cats, ", %s",
+            try_val_to_str(14, eventcategorynames));
+    }
+}
 
 
 static void
@@ -493,8 +720,8 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     messageid = tvb_get_ntohs(tvb, 18);
     col_add_fstr(pinfo->cinfo, COL_INFO, "Msg: %s, Src: %u.%u.%u.%u.%u, Dst: %u.%u.%u.%u.%u",
         val_to_str(messageid, messageidnames, "Unknown (0x%04x)"),
-            srcdev, srcvdaddr, srcob0addr, srcob1addr, srcob2addr,
-            dstdev, dstvdaddr, dstob0addr, dstob1addr, dstob2addr);
+        srcdev, srcvdaddr, srcob0addr, srcob1addr, srcob2addr,
+        dstdev, dstvdaddr, dstob0addr, dstob1addr, dstob2addr);
 
     if (tree) { /* we are being asked for details */
         proto_item *ti = NULL;
@@ -520,7 +747,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         messagelen = tvb_get_ntohl(tvb, 2);
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
         proto_item_append_text(ti, ", Msg: %s",
-                val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
+            val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
         proto_item_append_text(ti, ", Src %u.%u.%u.%u.%u",
             srcdev, srcvdaddr, srcob0addr, srcob1addr, srcob2addr);
         proto_item_append_text(ti, ", Dst: %u.%u.%u.%u.%u",
@@ -720,7 +947,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                         vdscount -= 1;
                     }
                 }
-            break;
+                break;
             case HIQNET_STORE_MSG :
                 /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stract, tvb, offset, 1, ENC_BIG_ENDIAN);
@@ -913,257 +1140,16 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     attrcount -= 1;
                 }
                 break;
-            /* FIXME: Messages unknown, assumed without payload */
+                /* FIXME: Messages unknown, assumed without payload */
             case HIQNET_RESERVED0_MSG:
             case HIQNET_RESERVED1_MSG:
-            /* Message without payload */
+                /* Message without payload */
             case HIQNET_ADDRUSED_MSG:
                 break;
             default : /* Unknown message or malformed packet */
                 /* TODO: display something useful? */
                 break;
         }
-    }
-}
-
-
-static void
-hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tvb, gint offset) {
-    proto_tree_add_bytes_format_value(hiqnet_tree, hf_hiqnet, tvb, offset, 4, NULL,
-        "%u.%u.%u.%u",
-        tvb_get_guint8(tvb, offset), /* Virtual Device address */
-        tvb_get_guint8(tvb, offset + 1), /* Object address part 1 */
-        tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
-        tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */
-}
-
-
-static gint
-hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    guint netid = 0;
-    netid = tvb_get_guint8(tvb, offset);
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_netid, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    if (netid == HIQNET_TCPIP_NET) {
-            offset = hiqnet_display_tcpipnetinfo(hiqnet_payload_tree, tvb, offset);
-    }
-    if (netid == HIQNET_RS232_NET) {
-        offset = hiqnet_display_rs232netinfo(hiqnet_payload_tree, tvb, offset);
-    }
-    return offset;
-}
-
-
-static gint
-hiqnet_display_tcpipnetinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_macaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
-    offset += 6;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_dhcp, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ipaddr, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset += 4;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subnetmsk, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset += 4;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_gateway, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset += 4;
-    return offset;
-}
-
-
-static gint
-hiqnet_display_rs232netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_comid, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_baudrate, tvb, offset, 4, ENC_BIG_ENDIAN);
-    offset += 4;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_parity, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stopbits, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_databits, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_flowcontrol, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    return offset;
-}
-
-
-static gint
-hiqnet_display_sernum(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    gint strlen;
-    strlen = tvb_get_ntohs(tvb, offset);
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernumlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset += 2;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sernum, tvb, offset, strlen, ENC_BIG_ENDIAN);
-    offset += strlen;
-    return offset;
-}
-
-
-static gint
-hiqnet_display_paramsub(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset += 2;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subaddr, tvb, offset, 6, ENC_BIG_ENDIAN);
-    offset += 6;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset += 2;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved0, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_reserved1, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset += 2;
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
-    offset += 2;
-    return offset;
-}
-
-
-/* TODO: decode flags for attributes and parameters */
-static gint
-hiqnet_display_data(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
-    guint8 datatype = 0;
-    gint datalen;
-
-    datatype = tvb_get_guint8(tvb, offset);
-    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datatype, tvb, offset, 1, ENC_BIG_ENDIAN);
-    offset += 1;
-    datalen = hiqnet_datasize_per_type[datatype];
-    if (datalen < 0) { /* This is a string or a block */
-        datalen = tvb_get_ntohs(tvb, offset);
-        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_datalen, tvb, offset, 2, ENC_BIG_ENDIAN);
-        offset += 2;
-    }
-    if (datatype == 9) { /* This is a string */
-        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_string, tvb, offset, datalen, ENC_UCS_2);
-    } else {
-        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_value, tvb, offset, datalen, ENC_BIG_ENDIAN);
-    }
-    offset += datalen;
-    return offset;
-}
-
-
-static void
-hiqnet_decode_flags(guint16 flags, proto_item *hiqnet_flags) { /* Message for enabled flags */
-    if (flags & HIQNET_REQACK_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_REQACK_FLAG, flagnames));
-        }
-    if (flags & HIQNET_ACK_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_ACK_FLAG, flagnames));
-        }
-    if (flags & HIQNET_INFO_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_INFO_FLAG, flagnames));
-        }
-    if (flags & HIQNET_ERROR_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_ERROR_FLAG, flagnames));
-        }
-    if (flags & HIQNET_GUARANTEED_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_GUARANTEED_FLAG, flagnames));
-        }
-    if (flags & HIQNET_MULTIPART_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                try_val_to_str(HIQNET_MULTIPART_FLAG, flagnames));
-        }
-    if (flags & HIQNET_SESSION_FLAG) {
-            proto_item_append_text(hiqnet_flags, ", %s",
-                val_to_str(HIQNET_SESSION_FLAG, flagnames, "Unknown"));
-        }
-}
-
-
-static void
-hiqnet_display_flags(guint16 flags, proto_item *hiqnet_flags_item, tvbuff_t *tvb, gint offset) {
-    proto_tree *hiqnet_flags_tree = NULL;
-    if (flags) {
-        hiqnet_flags_tree = proto_item_add_subtree(hiqnet_flags_item, ett_hiqnet_flags);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_reqack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_ack_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_info_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_error_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_guaranteed_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_multipart_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_flags_tree, hf_hiqnet_session_flag, tvb, offset, 2, ENC_BIG_ENDIAN);
-    }
-}
-
-
-static void
-hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbuff_t *tvb, gint offset) {
-    proto_tree *hiqnet_cats_tree = NULL;
-    if (cats) {
-        hiqnet_cats_tree = proto_item_add_subtree(hiqnet_cats_item, ett_hiqnet_cats);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_app_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_conf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_audionet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_vendnet_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_startup_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_dsp_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_misc_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlog_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_foreignproto_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_digio_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-        proto_tree_add_item(hiqnet_cats_tree, hf_hiqnet_ctrlsurf_cat, tvb, offset, 2, ENC_BIG_ENDIAN);
-    }
-}
-
-
-static void
-hiqnet_decode_cats(guint32 cats, proto_item *hiqnet_cats) {
-    if (cats & HIQNET_APPLICATION_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(1, eventcategorynames));
-    }
-    if (cats & HIQNET_CONF_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(2, eventcategorynames));
-    }
-    if (cats & HIQNET_AUDIONET_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(3, eventcategorynames));
-    }
-    if (cats & HIQNET_CTRLNET_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(4, eventcategorynames));
-    }
-    if (cats & HIQNET_VENDNET_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(5, eventcategorynames));
-    }
-    if (cats & HIQNET_STARTUP_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(6, eventcategorynames));
-    }
-    if (cats & HIQNET_DSP_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(7, eventcategorynames));
-    }
-    if (cats & HIQNET_MISC_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(8, eventcategorynames));
-    }
-    if (cats & HIQNET_CTRLLOG_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(9, eventcategorynames));
-    }
-    if (cats & HIQNET_FOREIGNPROTO_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(10, eventcategorynames));
-    }
-    if (cats & HIQNET_DIGIO_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(11, eventcategorynames));
-    }
-    if (cats & HIQNET_CTRLSURF_CAT) {
-        proto_item_append_text(hiqnet_cats, ", %s",
-            try_val_to_str(14, eventcategorynames));
     }
 }
 
