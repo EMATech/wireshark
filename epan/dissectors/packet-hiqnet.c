@@ -451,25 +451,25 @@ void proto_reg_handoff_hiqnet(void);
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-    guint8 headerlen = tvb_get_guint8(tvb, 1);
-    guint32 messagelen = tvb_get_ntohl(tvb, 2);
-    guint16 srcdev = tvb_get_ntohs(tvb, 6);
-    guint8 srcvdaddr = tvb_get_guint8(tvb, 8);
-    guint8 srcob0addr = tvb_get_guint8(tvb, 9);
-    guint8 srcob1addr = tvb_get_guint8(tvb, 10);
-    guint8 srcob2addr = tvb_get_guint8(tvb, 11);
-    guint16 dstdev = tvb_get_ntohs(tvb, 12);
-    guint8 dstvdaddr = tvb_get_guint8(tvb, 14);
-    guint8 dstob0addr = tvb_get_guint8(tvb, 15);
-    guint8 dstob1addr = tvb_get_guint8(tvb, 16);
-    guint8 dstob2addr = tvb_get_guint8(tvb, 17);
-    guint16 messageid = tvb_get_ntohs(tvb, 18);
-    guint16 flags = tvb_get_ntohs(tvb, 20);
+    guint8 headerlen = 0;
+    guint32 messagelen = 0;
+    guint16 srcdev = 0;
+    guint8 srcvdaddr = 0;
+    guint8 srcob0addr = 0;
+    guint8 srcob1addr = 0;
+    guint8 srcob2addr = 0;
+    guint16 dstdev = 0;
+    guint8 dstvdaddr = 0;
+    guint8 dstob0addr = 0;
+    guint8 dstob1addr = 0;
+    guint8 dstob2addr = 0;
+    guint16 messageid = 0;
+    guint16 flags = 0;
     guint16 flagmask = 0;
     guint16 paramcount = 0;
     guint16 subcount = 0;
     guint16 attrcount = 0;
-    gint strlen;
+    gint strlen = 0;
     guint16 vdscount = 0;
     guint32 cats = 0;
     guint16 eventscount = 0;
@@ -479,6 +479,18 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     col_set_str(pinfo->cinfo, COL_PROTOCOL, "HiQnet");
     /* Clear out stuff in the info column */
     col_clear(pinfo->cinfo,COL_INFO);
+
+    srcdev = tvb_get_ntohs(tvb, 6);
+    srcvdaddr = tvb_get_guint8(tvb, 8);
+    srcob0addr = tvb_get_guint8(tvb, 9);
+    srcob1addr = tvb_get_guint8(tvb, 10);
+    srcob2addr = tvb_get_guint8(tvb, 11);
+    dstdev = tvb_get_ntohs(tvb, 12);
+    dstvdaddr = tvb_get_guint8(tvb, 14);
+    dstob0addr = tvb_get_guint8(tvb, 15);
+    dstob1addr = tvb_get_guint8(tvb, 16);
+    dstob2addr = tvb_get_guint8(tvb, 17);
+    messageid = tvb_get_ntohs(tvb, 18);
     col_add_fstr(pinfo->cinfo, COL_INFO, "Msg: %s, Src: %u.%u.%u.%u.%u, Dst: %u.%u.%u.%u.%u",
         val_to_str(messageid, messageidnames, "Unknown (0x%04x)"),
             srcdev, srcvdaddr, srcob0addr, srcob1addr, srcob2addr,
@@ -505,6 +517,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree *hiqnet_ifaces_tree = NULL;
         gint offset = 0;
 
+        messagelen = tvb_get_ntohl(tvb, 2);
         ti = proto_tree_add_item(tree, proto_hiqnet, tvb, 0, messagelen, ENC_NA);
         proto_item_append_text(ti, ", Msg: %s",
                 val_to_str(messageid, messageidnames, "Unknown (0x%04x)"));
@@ -515,6 +528,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         hiqnet_tree = proto_item_add_subtree(ti, ett_hiqnet);
 
         /* Header subtree */
+        headerlen =  tvb_get_guint8(tvb, 1);
         hiqnet_header_tree = proto_tree_add_subtree(hiqnet_tree, tvb, 0, headerlen, ett_hiqnet, NULL, "Header");
 
         /* Standard header */
@@ -539,6 +553,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_messageid, tvb, offset, 2, ENC_BIG_ENDIAN);
         offset += 2;
         hiqnet_flags_item = proto_tree_add_item(hiqnet_header_tree, hf_hiqnet_flags, tvb, offset, 2, ENC_BIG_ENDIAN);
+        flags = tvb_get_ntohs(tvb, offset);
         hiqnet_decode_flags(flags, hiqnet_flags_item);
         hiqnet_display_flags(flags, hiqnet_flags_item, tvb, offset);
         offset += 2;
