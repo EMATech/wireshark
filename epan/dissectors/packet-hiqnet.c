@@ -73,6 +73,7 @@
 #define HIQNET_DIGIO_CAT        0x00000800
 #define HIQNET_CTRLSURF_CAT     0x00004000
 
+/* Routing layer message IDs */
 #define HIQNET_DISCOINFO_MSG        0x0000
 #define HIQNET_RESERVED0_MSG        0x0001
 #define HIQNET_GETNETINFO_MSG       0x0002
@@ -82,6 +83,8 @@
 #define HIQNET_SETADDR_MSG          0x0006
 #define HIQNET_GOODBYE_MSG          0x0007
 #define HIQNET_HELLO_MSG            0x0008
+
+/* Other message IDs */
 #define HIQNET_MULTPARMSET_MSG      0x0100
 #define HIQNET_MULTOBJPARMSET_MSG   0x0101
 #define HIQNET_PARMSETPCT_MSG       0x0102
@@ -444,6 +447,7 @@ static void hiqnet_display_cats(guint32 cats, proto_item *hiqnet_cats_item, tvbu
 void proto_register_hiqnet(void);
 void proto_reg_handoff_hiqnet(void);
 
+
 static void
 dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
@@ -569,100 +573,322 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset = headerlen; /* Make sure we are at the payload start */
         hiqnet_payload_tree = proto_tree_add_subtree(
             hiqnet_tree, tvb, offset, messagelen - headerlen, ett_hiqnet, NULL, "Payload");
-        if (messageid == HIQNET_DISCOINFO_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
-            offset += 4;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
-        }
-        if (messageid == HIQNET_HELLO_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            hiqnet_flagmask_item = proto_tree_add_item(
-                hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
-            flagmask = tvb_get_ntohs(tvb, offset);
-            hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
-            hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
-            offset += 2;
-        }
-        if (messageid == HIQNET_MULTPARMGET_MSG) {
-            paramcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (paramcount > 0) {
-                hiqnet_parameter_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
-                proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+        switch(messageid) {
+            case HIQNET_DISCOINFO_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                    offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_cost, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
+                offset += 4;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+                break;
+            case HIQNET_HELLO_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                hiqnet_flagmask_item = proto_tree_add_item(
+                    hiqnet_payload_tree, hf_hiqnet_flagmask, tvb, offset, 2, ENC_BIG_ENDIAN);
+                flagmask = tvb_get_ntohs(tvb, offset);
+                hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
+                hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
+                offset += 2;
+                break;
+            case HIQNET_MULTPARMGET_MSG :
+                paramcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (paramcount > 0) {
+                    hiqnet_parameter_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
+                    proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                        offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
+                    }
+                    paramcount -= 1;
                 }
-                paramcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_MULTPARMSET_MSG) {
-            paramcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (paramcount > 0) {
-                hiqnet_parameter_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
-                proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                break;
+            case HIQNET_MULTPARMSET_MSG :
+                paramcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
-                paramcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_PARMSUBALL_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
-            offset += 4;
-            /* TODO: can be decoded in two ways (old and new) */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            /* TODO: decode and display */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subflags, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-        }
-        if (messageid == HIQNET_PARMUNSUBALL_MSG) { /* Reverse engineered. Not part of the official spec. */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
-            offset += 4;
-            /* TODO: can be decoded in two ways (old and new) */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-        }
-        if (messageid == HIQNET_MULTPARMSUB_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            subcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (subcount > 0) {
-                hiqnet_subscription_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
-                offset = hiqnet_display_paramsub(hiqnet_subscription_tree, tvb, offset);
-                subcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_GOODBYE_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-        }
-        if (messageid == HIQNET_GETATTR_MSG) {
-            attrcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            if (flags & HIQNET_INFO_FLAG) { /* This not a request */
+                while (paramcount > 0) {
+                    hiqnet_parameter_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
+                    proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
+                    paramcount -= 1;
+                }
+                break;
+            case HIQNET_PARMSUBALL_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
+                offset += 4;
+                /* TODO: can be decoded in two ways (old and new) */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sensrate, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                /* TODO: decode and display */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subflags, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                break;
+            case HIQNET_PARMUNSUBALL_MSG : /* Reverse engineered. Not part of the official spec. */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                hiqnet_display_vdobjectaddr(hiqnet_payload_tree, hf_hiqnet_vdobject, tvb, offset);
+                offset += 4;
+                /* TODO: can be decoded in two ways (old and new) */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                break;
+            case HIQNET_MULTPARMSUB_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                subcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (subcount > 0) {
+                    hiqnet_subscription_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
+                    offset = hiqnet_display_paramsub(hiqnet_subscription_tree, tvb, offset);
+                    subcount -= 1;
+                }
+                break;
+            case HIQNET_GOODBYE_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                break;
+            case HIQNET_GETATTR_MSG :
+                attrcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                if (flags & HIQNET_INFO_FLAG) { /* This not a request */
+                    while (attrcount > 0) {
+                        hiqnet_attribute_tree = proto_tree_add_subtree(
+                            hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Attribute");
+                        proto_tree_add_item(hiqnet_attribute_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        offset = hiqnet_display_data(hiqnet_attribute_tree, tvb, offset);
+                        attrcount -= 1;
+                    }
+                } else { /* This may be a request */
+                    while (attrcount > 0) {
+                        proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        attrcount -= 1;
+                    }
+                }
+                break;
+            case HIQNET_GETVDLIST_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                strlen = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+                offset += strlen;
+                if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                    vdscount = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_numvds, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    while (vdscount > 0) {
+                        hiqnet_vds_tree = proto_tree_add_subtree(
+                            hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Virtual Devices");
+                        proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdaddr, tvb, offset, 1, ENC_BIG_ENDIAN);
+                        offset += 1;
+                        proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdclassid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        vdscount -= 1;
+                    }
+                }
+            break;
+            case HIQNET_STORE_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stract, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                strlen = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+                offset += strlen;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                break;
+            case HIQNET_RECALL_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recact, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recnum, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                strlen = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
+                offset += strlen;
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
+                offset += 1;
+                break;
+            case HIQNET_LOCATE_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+                break;
+            case HIQNET_SUBEVTLOGMSGS_MSG :
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                cats = tvb_get_ntohl(tvb, offset);
+                hiqnet_cats_item = proto_tree_add_item(
+                    hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+                hiqnet_decode_cats(cats, hiqnet_cats_item);
+                hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
+                offset += 4;
+                break;
+            case HIQNET_UNSUBEVTLOGMSGS_MSG :
+                cats = tvb_get_ntohl(tvb, offset);
+                hiqnet_cats_item = proto_tree_add_item(
+                    hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
+                hiqnet_decode_cats(cats, hiqnet_cats_item);
+                hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
+                offset += 4;
+                break;
+            case HIQNET_REQEVTLOG_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                    eventscount = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    while (eventscount > 0) {
+                        hiqnet_event_tree = proto_tree_add_subtree(
+                            hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Event");
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_priority, tvb, offset, 1, ENC_BIG_ENDIAN);
+                        offset += 1;
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventseqnum, tvb, offset, 4, ENC_BIG_ENDIAN);
+                        offset += 4;
+                        strlen = tvb_get_ntohs(tvb, offset);
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventtime, tvb, offset, strlen, ENC_UCS_2);
+                        offset += strlen;
+                        strlen = tvb_get_ntohs(tvb, offset);
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventdate, tvb, offset, strlen, ENC_UCS_2);
+                        offset += strlen;
+                        strlen = tvb_get_ntohs(tvb, offset);
+                        proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventinfo, tvb, offset, strlen, ENC_UCS_2);
+                        offset += strlen;
+                        strlen = tvb_get_ntohs(tvb, offset);
+                        proto_tree_add_item(
+                            hiqnet_event_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
+                        offset += strlen;
+                        eventscount -= 1;
+                    }
+                }
+                break;
+            case HIQNET_MULTPARMUNSUB_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                subcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (subcount > 0) {
+                    hiqnet_subscription_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
+                    proto_tree_add_item(hiqnet_subscription_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    proto_tree_add_item(hiqnet_subscription_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    subcount -= 1;
+                }
+                break;
+            case HIQNET_MULTOBJPARMSET_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                objcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_objcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (objcount > 0) {
+                    hiqnet_object_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Object");
+                    hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_vdobject, tvb, offset);
+                    offset += 4;
+                    paramcount = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_object_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    while (paramcount > 0) {
+                        hiqnet_parameter_tree = proto_tree_add_subtree(
+                            hiqnet_object_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
+                        proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                        offset += 2;
+                        offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
+                        paramcount -= 1;
+                    }
+                    objcount -= 1;
+                }
+                break;
+            case HIQNET_PARMSETPCT_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                paramcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (paramcount > 0) {
+                    hiqnet_parameter_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
+                    proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    /* TODO: docode paramval is in percentage represented as a 1.15 signed fixed point format */
+                    proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramval, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    paramcount -= 1;
+                }
+                break;
+            case HIQNET_PARMSUBPCT_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                subcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                while (subcount > 0) {
+                    hiqnet_subscription_tree = proto_tree_add_subtree(
+                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
+                    offset = hiqnet_display_paramsub(hiqnet_subscription_tree, tvb, offset);
+                    subcount -= 1;
+                }
+                break;
+            case HIQNET_GETNETINFO_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+                if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
+                    ifacecount = tvb_get_ntohs(tvb, offset);
+                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ifacecount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                    offset += 2;
+                    while (ifacecount > 0) {
+                        hiqnet_ifaces_tree = proto_tree_add_subtree(
+                            hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Interface");
+                        proto_tree_add_item(hiqnet_ifaces_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
+                        offset += 4;
+                        offset = hiqnet_display_netinfo(hiqnet_ifaces_tree, tvb, offset);
+                        ifacecount -= 1;
+                    }
+                }
+                break;
+            case HIQNET_REQADDR_MSG :
+                /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                break;
+            case HIQNET_SETADDR_MSG :
+                offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_newdevaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
+                offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+                break;
+            case HIQNET_SETATTR_MSG : /* Reverse engineered. Not part of the official spec. */
+                attrcount = tvb_get_ntohs(tvb, offset);
+                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
+                offset += 2;
                 while (attrcount > 0) {
                     hiqnet_attribute_tree = proto_tree_add_subtree(
                         hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Attribute");
@@ -671,227 +897,16 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     offset = hiqnet_display_data(hiqnet_attribute_tree, tvb, offset);
                     attrcount -= 1;
                 }
-            } else { /* This may be a request */
-                while (attrcount > 0) {
-                    proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                    offset += 2;
-                    attrcount -= 1;
-                }
-            }
-        }
-        if (messageid == HIQNET_GETVDLIST_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            strlen = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
-            offset += strlen;
-            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                vdscount = tvb_get_ntohs(tvb, offset);
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_numvds, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                while (vdscount > 0) {
-                    hiqnet_vds_tree = proto_tree_add_subtree(
-                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Virtual Devices");
-                    proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdaddr, tvb, offset, 1, ENC_BIG_ENDIAN);
-                    offset += 1;
-                    proto_tree_add_item(hiqnet_vds_tree, hf_hiqnet_vdclassid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                    offset += 2;
-                    vdscount -= 1;
-                }
-            }
-        }
-        if (messageid == HIQNET_STORE_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_stract, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strnum, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            strlen = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
-            offset += strlen;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-        }
-        if (messageid == HIQNET_RECALL_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recact, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recnum, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            strlen = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_strlen, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
-            offset += strlen;
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
-            offset += 1;
-        }
-        if (messageid == HIQNET_LOCATE_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
-        }
-        if (messageid == HIQNET_SUBEVTLOGMSGS_MSG) {
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            cats = tvb_get_ntohl(tvb, offset);
-            hiqnet_cats_item = proto_tree_add_item(
-                hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
-            hiqnet_decode_cats(cats, hiqnet_cats_item);
-            hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
-            offset += 4;
-        }
-        if (messageid == HIQNET_UNSUBEVTLOGMSGS_MSG) {
-            cats = tvb_get_ntohl(tvb, offset);
-            hiqnet_cats_item = proto_tree_add_item(
-                hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
-            hiqnet_decode_cats(cats, hiqnet_cats_item);
-            hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
-            offset += 4;
-        }
-        if (messageid == HIQNET_REQEVTLOG_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                eventscount = tvb_get_ntohs(tvb, offset);
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_entrieslen, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                while (eventscount > 0) {
-                    hiqnet_event_tree = proto_tree_add_subtree(
-                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Event");
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_category, tvb, offset, 2, ENC_BIG_ENDIAN);
-                    offset += 2;
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                    offset += 2;
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_priority, tvb, offset, 1, ENC_BIG_ENDIAN);
-                    offset += 1;
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventseqnum, tvb, offset, 4, ENC_BIG_ENDIAN);
-                    offset += 4;
-                    strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventtime, tvb, offset, strlen, ENC_UCS_2);
-                    offset += strlen;
-                    strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventdate, tvb, offset, strlen, ENC_UCS_2);
-                    offset += strlen;
-                    strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(hiqnet_event_tree, hf_hiqnet_eventinfo, tvb, offset, strlen, ENC_UCS_2);
-                    offset += strlen;
-                    strlen = tvb_get_ntohs(tvb, offset);
-                    proto_tree_add_item(
-                        hiqnet_event_tree, hf_hiqnet_eventadddata, tvb, offset, strlen, ENC_BIG_ENDIAN);
-                    offset += strlen;
-                    eventscount -= 1;
-                }
-            }
-        }
-        if (messageid == HIQNET_MULTPARMUNSUB_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            subcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (subcount > 0) {
-                hiqnet_subscription_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
-                proto_tree_add_item(hiqnet_subscription_tree, hf_hiqnet_pubparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                proto_tree_add_item(hiqnet_subscription_tree, hf_hiqnet_subparmid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                subcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_MULTOBJPARMSET_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            objcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_objcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (objcount > 0) {
-                hiqnet_object_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Object");
-                hiqnet_display_vdobjectaddr(hiqnet_header_tree, hf_hiqnet_vdobject, tvb, offset);
-                offset += 4;
-                paramcount = tvb_get_ntohs(tvb, offset);
-                proto_tree_add_item(hiqnet_object_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                while (paramcount > 0) {
-                    hiqnet_parameter_tree = proto_tree_add_subtree(
-                        hiqnet_object_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
-                    proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                    offset += 2;
-                    offset = hiqnet_display_data(hiqnet_parameter_tree, tvb, offset);
-                    paramcount -= 1;
-                }
-            objcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_PARMSETPCT_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            paramcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_paramcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (paramcount > 0) {
-                hiqnet_parameter_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Parameter");
-                proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                /* TODO: docode paramval is in percentage represented as a 1.15 signed fixed point format */
-                proto_tree_add_item(hiqnet_parameter_tree, hf_hiqnet_paramval, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                paramcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_PARMSUBPCT_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            subcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (subcount > 0) {
-                hiqnet_subscription_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Subscription");
-                offset = hiqnet_display_paramsub(hiqnet_subscription_tree, tvb, offset);
-                subcount -= 1;
-            }
-        }
-        if (messageid == HIQNET_GETNETINFO_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
-            if (flags & HIQNET_INFO_FLAG) { /* This is not a request */
-                ifacecount = tvb_get_ntohs(tvb, offset);
-                proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_ifacecount, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                while (ifacecount > 0) {
-                    hiqnet_ifaces_tree = proto_tree_add_subtree(
-                        hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Interface");
-                    proto_tree_add_item(hiqnet_ifaces_tree, hf_hiqnet_maxmsgsize, tvb, offset, 4, ENC_BIG_ENDIAN);
-                    offset += 4;
-                    offset = hiqnet_display_netinfo(hiqnet_ifaces_tree, tvb, offset);
-                    ifacecount -= 1;
-                }
-            }
-        }
-        if (messageid == HIQNET_REQADDR_MSG) {
-            /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-        }
-        if (messageid == HIQNET_SETADDR_MSG) {
-            offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_newdevaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
-        }
-        if (messageid == HIQNET_SETATTR_MSG) { /* Reverse engineered. Not part of the official spec. */
-            attrcount = tvb_get_ntohs(tvb, offset);
-            proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_attrcount, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
-            while (attrcount > 0) {
-                hiqnet_attribute_tree = proto_tree_add_subtree(
-                    hiqnet_payload_tree, tvb, offset, -1, ett_hiqnet, NULL, "Attribute");
-                proto_tree_add_item(hiqnet_attribute_tree, hf_hiqnet_attrid, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
-                offset = hiqnet_display_data(hiqnet_attribute_tree, tvb, offset);
-                attrcount -= 1;
-            }
+                break;
+            /* FIXME: Messages unknown, assumed without payload */
+            case HIQNET_RESERVED0_MSG:
+            case HIQNET_RESERVED1_MSG:
+            /* Message without payload */
+            case HIQNET_ADDRUSED_MSG:
+                break;
+            default : /* Unknown message or malformed packet */
+                /* TODO: display something useful? */
+                break;
         }
     }
 }
@@ -906,6 +921,7 @@ hiqnet_display_vdobjectaddr(proto_tree *hiqnet_tree, int hf_hiqnet, tvbuff_t *tv
         tvb_get_guint8(tvb, offset + 2), /* Object address part 2 */
         tvb_get_guint8(tvb, offset + 3)); /* Object address part 3 */
 }
+
 
 static gint
 hiqnet_display_netinfo(proto_tree *hiqnet_payload_tree, tvbuff_t *tvb, gint offset) {
