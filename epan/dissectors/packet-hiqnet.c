@@ -808,7 +808,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         if (flags & HIQNET_SESSION_FLAG) {
             hiqnet_session_tree = proto_tree_add_subtree(hiqnet_header_tree, tvb, offset, 2, ett_hiqnet, NULL, "Session");
             proto_tree_add_item(hiqnet_session_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
-            offset += 2;
         }
 
         /* Payload(s) */
@@ -826,7 +825,7 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += 4;
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_keepaliveperiod, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+                hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
                 break;
             case HIQNET_HELLO_MSG :
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_sessnum, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -836,7 +835,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 flagmask = tvb_get_ntohs(tvb, offset);
                 hiqnet_decode_flags(flagmask, hiqnet_flagmask_item);
                 hiqnet_display_flags(flagmask, hiqnet_flagmask_item, tvb, offset);
-                offset += 2;
                 break;
             case HIQNET_MULTPARMGET_MSG :
                 paramcount = tvb_get_ntohs(tvb, offset);
@@ -878,7 +876,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += 2;
                 /* TODO: decode and display */
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subflags, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
                 break;
             case HIQNET_PARMUNSUBALL_MSG : /* Reverse engineered. Not part of the official spec. */
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -887,7 +884,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 offset += 4;
                 /* TODO: can be decoded in two ways (old and new) */
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_subtype, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
                 break;
             case HIQNET_MULTPARMSUB_MSG :
                 /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
@@ -903,7 +899,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 break;
             case HIQNET_GOODBYE_MSG :
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
                 break;
             case HIQNET_GETATTR_MSG :
                 attrcount = tvb_get_ntohs(tvb, offset);
@@ -960,7 +955,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
                 offset += strlen;
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
                 break;
             case HIQNET_RECALL_MSG :
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_recact, tvb, offset, 1, ENC_BIG_ENDIAN);
@@ -973,12 +967,11 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_wrkgrppath, tvb, offset, strlen, ENC_UCS_2);
                 offset += strlen;
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_scope, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
                 break;
             case HIQNET_LOCATE_MSG :
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_time, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
+                hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
                 break;
             case HIQNET_SUBEVTLOGMSGS_MSG :
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_maxdatasize, tvb, offset, 2, ENC_BIG_ENDIAN);
@@ -988,7 +981,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
                 hiqnet_decode_cats(cats, hiqnet_cats_item);
                 hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
-                offset += 4;
                 break;
             case HIQNET_UNSUBEVTLOGMSGS_MSG :
                 cats = tvb_get_ntohl(tvb, offset);
@@ -996,7 +988,6 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                     hiqnet_payload_tree, hf_hiqnet_catfilter, tvb, offset, 4, ENC_BIG_ENDIAN);
                 hiqnet_decode_cats(cats, hiqnet_cats_item);
                 hiqnet_display_cats(cats, hiqnet_cats_item, tvb, offset);
-                offset += 4;
                 break;
             case HIQNET_REQEVTLOG_MSG :
                 /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
@@ -1119,13 +1110,12 @@ dissect_hiqnet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             case HIQNET_REQADDR_MSG :
                 /* FIXME: Not tested, straight from the spec, never occurred with the devices I own */
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_devaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
-                offset += 2;
                 break;
             case HIQNET_SETADDR_MSG :
                 offset = hiqnet_display_sernum(hiqnet_payload_tree, tvb, offset);
                 proto_tree_add_item(hiqnet_payload_tree, hf_hiqnet_newdevaddr, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
-                offset = hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
+                hiqnet_display_netinfo(hiqnet_payload_tree, tvb, offset);
                 break;
             case HIQNET_SETATTR_MSG : /* Reverse engineered. Not part of the official spec. */
                 attrcount = tvb_get_ntohs(tvb, offset);
