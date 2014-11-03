@@ -44,19 +44,9 @@
 #define HIQNET_MULTIPART_FLAG   0x0040
 #define HIQNET_SESSION_FLAG     0x0100
 
-#define HIQNET_PARAMETER_FLAGS_MASK    0x016f
-
-#define HIQNET_PARAMETER_SENSOR_FLAG   0x0002
-
 #define HIQNET_SUBSCRIPTION_TYPE_MASK      0x07
 
-#define HIQNET_SUBSCRIPTION_TYPE_NONSENS   0x01
-#define HIQNET_SUBSCRIPTION_TYPE_SENS      0x02
-#define HIQNET_SUBSCRIPTION_TYPE_ATTR      0x04
-
 #define HIQNET_SUBSCRIPTION_FLAGS_MASK      0x00000001
-
-#define HIQNET_SUBSCRIPTION_INITUPD_FLAG    0x00000001
 
 #define HIQNET_CATEGORIES_MASK  0x00004fff
 
@@ -114,41 +104,6 @@ static const value_string device_attributes_names[] = {
     { 2, "Flags" },
     { 3, "Serial Number" },
     { 4, "Software Version" },
-    { 0, NULL }
-};
-
-/* FIXME: decode attributes types separately (Device Manager, Device, Parameter) */
-static const value_string parameter_attributes_names[] = {
-    { 0, "Data Type" },
-    { 1, "Name String" },
-    { 2, "Minimum Value" },
-    { 3, "Maximum Value" },
-    { 4, "Control Law" },
-    { 5, "Flags" },
-    { 0, NULL }
-};
-
-static const value_string parameter_flags_names[] = {
-    { HIQNET_PARAMETER_SENSOR_FLAG, "Sensor" },
-    { 0, NULL }
-};
-
-static const value_string subscription_flags_names[] = {
-    { HIQNET_SUBSCRIPTION_INITUPD_FLAG, "Send Initial Updates" },
-    { 0, NULL }
-};
-
-static const value_string subscription_types_oldstyle_names[] = {
-    { 0, "ALL" },
-    { 1, "Non-Sensor" },
-    { 2, "Sensor" },
-    { 0, NULL }
-};
-
-static const value_string subscription_types_names[] = {
-    { HIQNET_SUBSCRIPTION_TYPE_NONSENS, "Non-Sensor Parameters" },
-    { HIQNET_SUBSCRIPTION_TYPE_SENS, "Sensor Parameters" },
-    { HIQNET_SUBSCRIPTION_TYPE_ATTR, "Attributes" },
     { 0, NULL }
 };
 
