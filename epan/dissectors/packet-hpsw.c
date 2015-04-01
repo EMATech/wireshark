@@ -256,7 +256,7 @@ dissect_hpsw(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         length = tvb_get_guint8(tvb, offset+1);
 
         /* make sure still in valid tlv */
-        if (( length < 1 ) || ( length > tvb_length_remaining(tvb, offset+2)))
+        if (( length < 1 ) || ( length > tvb_reported_length_remaining(tvb, offset+2)))
             break;
 
         tlv_tree = proto_tree_add_subtree(hp_tree, tvb, offset, length+2, ett_hpsw_tlv, NULL,
@@ -267,7 +267,7 @@ dissect_hpsw(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         offset += 1;
 
         /* LENGTH (not inclusive of type and length bytes) */
-        proto_tree_add_uint(tlv_tree, hf_hpsw_tlvlength, tvb, offset, 1, length);
+        ti = proto_tree_add_uint(tlv_tree, hf_hpsw_tlvlength, tvb, offset, 1, length);
         offset += 1;
 
         dissect_hpsw_tlv(tvb, pinfo, offset, length, tlv_tree, ti, type);

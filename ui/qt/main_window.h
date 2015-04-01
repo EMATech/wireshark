@@ -61,6 +61,10 @@
 #include "about_dialog.h"
 
 class QAction;
+class QActionGroup;
+
+Q_DECLARE_METATYPE(ts_type)
+Q_DECLARE_METATYPE(ts_precision)
 
 namespace Ui {
     class MainWindow;
@@ -119,6 +123,9 @@ private:
     SummaryDialog summary_dialog_;
     ByteViewTab *byte_view_tab_;
     QWidget empty_pane_;
+    QActionGroup *show_hide_actions_;
+    QActionGroup *time_display_actions_;
+    QActionGroup *time_precision_actions_;
 
     bool capture_stopping_;
     bool capture_filter_valid_;
@@ -151,6 +158,11 @@ private:
     void fileAddExtension(QString &file_name, int file_type, bool compressed);
     bool testCaptureFileClose(bool from_quit = false, QString& before_what = *new QString());
     void captureStop();
+
+    void initMainToolbarIcons();
+    void initShowHideMainWidgets();
+    void initTimeDisplayFormatMenu();
+    void initTimePrecisionFormatMenu();
 
     void setTitlebarForSelectedTreeRow();
     void setTitlebarForCaptureFile();
@@ -283,6 +295,10 @@ private slots:
     void on_actionEditConfigurationProfiles_triggered();
     void on_actionEditPreferences_triggered();
 
+    void showHideMainWidgets(QAction *action);
+    void setTimestampFormat(QAction *action);
+    void setTimestampPrecision(QAction *action);
+    void on_actionViewTimeDisplaySecondsWithHoursAndMinutes_triggered(bool checked);
     void zoomText();
     void on_actionViewZoomIn_triggered();
     void on_actionViewZoomOut_triggered();
@@ -290,8 +306,6 @@ private slots:
     void on_actionViewColorizePacketList_triggered(bool checked);
     void on_actionViewResizeColumns_triggered();
     void on_actionViewReload_triggered();
-    void on_actionViewToolbarMainToolbar_triggered();
-    void on_actionViewToolbarDisplayFilter_triggered();
 
     void on_actionGoGoToPacket_triggered();
     void resetPreviousFocus();

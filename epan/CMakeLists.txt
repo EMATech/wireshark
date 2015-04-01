@@ -46,6 +46,11 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/nghttp2
 )
 
+set(COMPRESS_FILES
+	compress/lzxpress.c
+)
+source_group(compress FILES ${COMPRESS_FILES})
+
 set(CRYPT_FILES
 	crypt/airpdcap.c
 	crypt/airpdcap_ccmp.c
@@ -316,7 +321,9 @@ set(DISSECTOR_SRC
 	dissectors/packet-acn.c
 	dissectors/packet-acr122.c
 	dissectors/packet-actrace.c
+	dissectors/packet-adb.c
 	dissectors/packet-adb_cs.c
+	dissectors/packet-adb_service.c
 	dissectors/packet-adwin-config.c
 	dissectors/packet-adwin.c
 	dissectors/packet-afp.c
@@ -481,6 +488,7 @@ set(DISSECTOR_SRC
 	dissectors/packet-corosync-totemnet.c
 	dissectors/packet-corosync-totemsrp.c
 	dissectors/packet-cosine.c
+	dissectors/packet-couchbase.c
 	dissectors/packet-cp2179.c
 	dissectors/packet-cpfi.c
 	dissectors/packet-cpha.c
@@ -757,6 +765,7 @@ set(DISSECTOR_SRC
 	dissectors/packet-hdfsdata.c
 	dissectors/packet-hdmi.c
 	dissectors/packet-hip.c
+	dissectors/packet-hiqnet.c
 	dissectors/packet-hislip.c
 	dissectors/packet-homeplug-av.c
 	dissectors/packet-homeplug.c
@@ -1652,6 +1661,7 @@ set(CLEAN_FILES
 	#x11-declarations.h
 	#x11-register-info.h
 	${LIBWIRESHARK_CLEAN_FILES}
+	${COMPRESS_FILES}
 	${CRYPT_FILES}
 	${DFILTER_CLEAN_FILES}
 	${FTYPE_FILES}
@@ -1681,6 +1691,7 @@ add_library(epan ${LINK_MODE_LIB}
 	#x11-register-info.h
 	${LIBWIRESHARK_FILES}
 	${CRYPT_FILES}
+	${COMPRESS_FILES}
 	${DFILTER_FILES}
 	${FTYPE_FILES}
 	${WMEM_FILES}
@@ -1708,6 +1719,7 @@ ABICHECK(libwireshark)
 
 file(GLOB COLUMN_INFO_HEADER column-info.h)
 file(GLOB CRYPT_HEADERS crypt/*.h)
+file(GLOB COMPRESS_HEADERS compress/*.h)
 file(GLOB DFILTER_HEADERS dfilter/*.h ../tools/lemon/cppmagic.h)
 file(GLOB D_HEADERS dissectors/*.h)
 file(GLOB FTYPES_HEADERS ftypes/*.h)
@@ -1716,6 +1728,7 @@ file(GLOB NGHTTP2_HEADERS nghttp2/*.h)
 file(MAKE_DIRECTORY ${ABICHECK_TMPDIR}
 	${ABICHECK_TMPDIR}/epan
 	${ABICHECK_TMPDIR}/crypt
+	${ABICHECK_TMPDIR}/compress
 	${ABICHECK_TMPDIR}/dfilter
 	${ABICHECK_TMPDIR}/dissectors
 	${ABICHECK_TMPDIR}/ftypes
@@ -1725,6 +1738,7 @@ file(MAKE_DIRECTORY ${ABICHECK_TMPDIR}
 file(COPY ../color.h ../register.h DESTINATION ${ABICHECK_TMPDIR})
 file(COPY ${HEADERS} DESTINATION ${ABICHECK_TMPDIR}/epan)
 file(COPY ${CRYPT_HEADERS} DESTINATION ${ABICHECK_TMPDIR}/crypt)
+file(COPY ${COMPRESS_HEADERS} DESTINATION ${ABICHECK_TMPDIR}/compress)
 file(COPY ${DFILTER_HEADERS} DESTINATION ${ABICHECK_TMPDIR}/dfilter)
 file(COPY ${D_HEADERS} DESTINATION ${ABICHECK_TMPDIR}/dissectors)
 file(COPY ${FTYPES_HEADERS} DESTINATION ${ABICHECK_TMPDIR}/ftypes)
@@ -1742,11 +1756,12 @@ add_custom_command(OUTPUT libwireshark.abi.tar.gz
 	COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/abi_dumps/libwireshark/libwireshark_* ${CMAKE_CURRENT_BINARY_DIR}/libwireshark.abi.tar.gz
 	COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/abi_dumps ${ABICHECK_TMPDIR}/config.h
 		${ABICHECK_TMPDIR}/epan/* ${ABICHECK_TMPDIR}/crypt/*
+		${ABICHECK_TMPDIR}/epan/* ${ABICHECK_TMPDIR}/compress/*
 		${ABICHECK_TMPDIR}/dfilter/* ${ABICHECK_TMPDIR}/dissectors/*
 		${ABICHECK_TMPDIR}/ftypes/* ${ABICHECK_TMPDIR}/wmem/*
 		${ABICHECK_TMPDIR}/nghttp2/*
 	DEPENDS ${HEADERS}
-		${CRYPT_HEADERS} ${DFILTER_HEADERS} ${D_HEADERS}
+		${CRYPT_HEADERS} ${COMPRESS_HEADERS} ${DFILTER_HEADERS} ${D_HEADERS}
 		${FTYPES_HEADERS} ${WMEM_HEADERS} ${NGHTTP2_HEADERS} epan)
 
 # By default the name for a library with target name epan will be libepan,

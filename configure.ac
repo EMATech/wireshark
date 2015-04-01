@@ -358,28 +358,81 @@ then
 
 	*)
 		#
+		# Look for the oldest SDK we can find that's
+		# for an OS equal to or later than this one.
+		#
 		# XXX - for 10.4, do we need 10.4u?  We're
 		# not currently doing fat builds (we'd need
 		# fat versions of the support libraries for
 		# that to be useful), but, if we do, we'd
 		# need to use 10.4u.
 		#
-		for i in /Developer/SDKs \
+
+		#
+		# Get the real version - strip off the "10.".
+		# We'll worry about that if, as, and when there's ever
+		# an OS XI.
+		#
+		deploy_real_version=`echo "$deploy_target" | sed -n 's/10\.\(.*\)/\1/p'`
+
+		#
+		# Search each directory that might contain SDKs.
+		#
+		sdkpath=""
+		for sdksdir in /Developer/SDKs \
 		    /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs \
 		    /Library/Developer/CommandLineTools/SDKs
 		do
-			if test -d "$i"/"MacOSX$deploy_target.sdk"
+			#
+			# Get a list of all the SDKs.
+			#
+			if ! test -d "$sdksdir"
 			then
-				SDKPATH="$i"/"MacOSX$deploy_target.sdk"
-				break
+				#
+				# There is no directory with that name.
+				# Move on to the next one in the list,
+				# if any.
+				#
+				continue
 			fi
+
+			#
+			# Get a list of all the SDKs in that directory,
+			# if any.
+			#
+			# We have to use @<:@ for [ and @:>@ for ] to
+			# avoid m4 removing the square brackets.
+			#
+			sdklist=`(cd "$sdksdir"; ls -d MacOSX10.@<:@0-9@:>@*.sdk 2>/dev/null)`
+
+			for sdk in $sdklist
+			do
+				#
+				# Get the real version for this SDK.
+				#
+				sdk_real_version=`echo "$sdk" | sed -n 's/MacOSX10\.\(.*\)\.sdk/\1/p'`
+
+				#
+				# Is it for the deployment target or
+				# some later release?
+				#
+				if test "$sdk_real_version" -ge "$deploy_real_version"
+				then
+					#
+					# Yes, use it.
+					#
+					sdkpath="$sdksdir/$sdk"
+					break 2
+				fi
+			done
 		done
-		if test -z "$SDKPATH"
+		if test -z "$sdkpath"
 		then
 			AC_MSG_RESULT(no)
-			AC_MSG_ERROR([We couldn't find the SDK for OS X $deploy_target])
+			AC_MSG_ERROR([We couldn't find an SDK for OS X $deploy_target or later])
 		fi
-		AC_MSG_RESULT(yes)
+		SDKPATH="$sdkpath"
+		AC_MSG_RESULT([yes, with the 10.$sdk_real_version SDK])
 		;;
 	esac
 
@@ -1444,8 +1497,6 @@ if test "x$enable_wireshark" = "xyes"; then
 			CXXFLAGS="$CXXFLAGS $Qt_CFLAGS"
 			have_qt=yes
 			GUI_CONFIGURE_FLAGS="$GUI_CONFIGURE_FLAGS --with-qt"
-			OSX_APP_FLAGS="$OSX_APP_FLAGS -qt"
-			OSX_DMG_FLAGS="-qt"
 		],
 		[AC_MSG_ERROR([Qt is not available])])
 
@@ -1548,6 +1599,8 @@ if test "$have_gtk" = "yes" -a "$have_qt" = "no" ; then
 	wireshark_man="wireshark.1"
 	wireshark_SUBDIRS="codecs ui/gtk"
 	use_glib_cflags="false"
+	OSX_APP_FLAGS="$OSX_APP_FLAGS -gtk"
+	OSX_DMG_FLAGS="-gtk"
 fi
 if test "$have_gtk" = "no" -a "$have_qt" = "no" ; then
 	# We have neither GTK+ nor Qt.
@@ -2568,19 +2621,6 @@ AC_CHECK_FUNC(getopt,
   GETOPT_LO="wsgetopt.lo")
 AC_SUBST(GETOPT_LO)
 
-AC_CHECK_FUNC(strncasecmp,
-  [
-    STRNCASECMP_INCLUDES=""
-    STRNCASECMP_LO=""
-    AC_DEFINE(HAVE_STRNCASECMP, 1, [Define to 1 if you have the strncasecmp function.])
-  ],
-  [
-    STRNCASECMP_INCLUDES="strncasecmp.h"
-    STRNCASECMP_LO="strncasecmp.lo"
-  ])
-AC_SUBST(STRNCASECMP_INCLUDES)
-AC_SUBST(STRNCASECMP_LO)
-
 AC_CHECK_FUNCS(mkstemp mkdtemp)
 
 AC_SEARCH_LIBS(inet_aton, [socket nsl],
@@ -2915,6 +2955,7 @@ AC_OUTPUT(
   doc/Makefile
   docbook/Makefile
   epan/Makefile
+  epan/compress/Makefile
   epan/crypt/Makefile
   epan/doxygen.cfg
   epan/dfilter/Makefile

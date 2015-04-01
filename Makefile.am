@@ -902,96 +902,143 @@ EXTRA_DIST = \
 	image/stock_dialog_warning_48.xpm	\
 	image/text2pcap.rc.in			\
 	image/tfshark.rc.in			\
-	image/toolbar/16x16/edit-find.png	\
-	image/toolbar/16x16/edit-find.svg	\
+	image/toolbar/16x16/edit-find.png		\
+	image/toolbar/16x16/edit-find.svg		\
+	image/toolbar/16x16/edit-find@2x.png		\
 	image/toolbar/16x16/go-first.png		\
 	image/toolbar/16x16/go-first.svg		\
-	image/toolbar/16x16/go-jump.png		\
-	image/toolbar/16x16/go-jump.svg		\
-	image/toolbar/16x16/go-last.png		\
-	image/toolbar/16x16/go-last.svg		\
-	image/toolbar/16x16/go-next.png		\
-	image/toolbar/16x16/go-next.svg		\
+	image/toolbar/16x16/go-first@2x.png		\
+	image/toolbar/16x16/go-jump.png			\
+	image/toolbar/16x16/go-jump.svg			\
+	image/toolbar/16x16/go-jump@2x.png		\
+	image/toolbar/16x16/go-last.png			\
+	image/toolbar/16x16/go-last.svg			\
+	image/toolbar/16x16/go-last@2x.png		\
+	image/toolbar/16x16/go-next.png			\
+	image/toolbar/16x16/go-next.svg			\
+	image/toolbar/16x16/go-next@2x.png		\
 	image/toolbar/16x16/go-previous.png		\
 	image/toolbar/16x16/go-previous.svg		\
-	image/toolbar/16x16/x-capture-file-close.png		\
-	image/toolbar/16x16/x-capture-file-close.svg		\
-	image/toolbar/16x16/x-capture-file-reload.png		\
-	image/toolbar/16x16/x-capture-file-reload.svg		\
-	image/toolbar/16x16/x-capture-file-save.png		\
-	image/toolbar/16x16/x-capture-options-gear.svg		\
+	image/toolbar/16x16/go-previous@2x.png		\
+	image/toolbar/16x16/x-capture-file-close.png	\
+	image/toolbar/16x16/x-capture-file-close.svg	\
+	image/toolbar/16x16/x-capture-file-close@2x.png	\
+	image/toolbar/16x16/x-capture-file-close@2x.svg	\
+	image/toolbar/16x16/x-capture-file-reload.png	\
+	image/toolbar/16x16/x-capture-file-reload.svg	\
+	image/toolbar/16x16/x-capture-file-reload@2x.png	\
+	image/toolbar/16x16/x-capture-file-save.png	\
+	image/toolbar/16x16/x-capture-file-save.svg	\
+	image/toolbar/16x16/x-capture-file-save@2x.png	\
+	image/toolbar/16x16/x-capture-file-save@2x.svg	\
+	image/toolbar/16x16/x-capture-options-gear.svg	\
 	image/toolbar/16x16/x-capture-options-wrench.svg	\
-	image/toolbar/16x16/x-capture-options.png		\
-	image/toolbar/16x16/x-capture-restart-fin.svg		\
+	image/toolbar/16x16/x-capture-options.png	\
+	image/toolbar/16x16/x-capture-options@2x.png	\
+	image/toolbar/16x16/x-capture-restart-fin.svg	\
 	image/toolbar/16x16/x-capture-restart-triangle1.svg	\
 	image/toolbar/16x16/x-capture-restart-triangle2.svg	\
-	image/toolbar/16x16/x-capture-restart-turn1.svg		\
-	image/toolbar/16x16/x-capture-restart-turn2.svg		\
-	image/toolbar/16x16/x-capture-restart.png		\
-	image/toolbar/16x16/x-capture-start.on.png		\
-	image/toolbar/16x16/x-capture-start.on.svg		\
-	image/toolbar/16x16/x-capture-start.png			\
-	image/toolbar/16x16/x-capture-start.svg			\
-	image/toolbar/16x16/x-capture-stop-red.svg		\
-	image/toolbar/16x16/x-capture-stop-white.svg		\
-	image/toolbar/16x16/x-capture-stop.png			\
+	image/toolbar/16x16/x-capture-restart-turn1.svg	\
+	image/toolbar/16x16/x-capture-restart-turn2.svg	\
+	image/toolbar/16x16/x-capture-restart.png	\
+	image/toolbar/16x16/x-capture-restart@2x.png	\
+	image/toolbar/16x16/x-capture-start.on.png	\
+	image/toolbar/16x16/x-capture-start.on.svg	\
+	image/toolbar/16x16/x-capture-start.on@2x.png	\
+	image/toolbar/16x16/x-capture-start.png		\
+	image/toolbar/16x16/x-capture-start.svg		\
+	image/toolbar/16x16/x-capture-start@2x.png	\
+	image/toolbar/16x16/x-capture-stop-red.svg	\
+	image/toolbar/16x16/x-capture-stop-white.svg	\
+	image/toolbar/16x16/x-capture-stop.png		\
+	image/toolbar/16x16/x-capture-stop@2x.png	\
 	image/toolbar/16x16/x-colorize-packets.png	\
 	image/toolbar/16x16/x-colorize-packets.svg	\
+	image/toolbar/16x16/x-colorize-packets@2x.png	\
 	image/toolbar/16x16/x-resize-columns.png	\
 	image/toolbar/16x16/x-resize-columns.svg	\
+	image/toolbar/16x16/x-resize-columns@2x.png	\
 	image/toolbar/16x16/x-stay-last.png		\
 	image/toolbar/16x16/x-stay-last.svg		\
+	image/toolbar/16x16/x-stay-last@2x.png		\
 	image/toolbar/16x16/zoom-in.png			\
 	image/toolbar/16x16/zoom-in.svg			\
+	image/toolbar/16x16/zoom-in@2x.png		\
 	image/toolbar/16x16/zoom-original.png		\
 	image/toolbar/16x16/zoom-original.svg		\
+	image/toolbar/16x16/zoom-original@2x.png	\
 	image/toolbar/16x16/zoom-out.png		\
 	image/toolbar/16x16/zoom-out.svg		\
+	image/toolbar/16x16/zoom-out@2x.png		\
 	image/toolbar/24x24/edit-find.png	\
 	image/toolbar/24x24/edit-find.svg	\
-	image/toolbar/24x24/go-first.png		\
-	image/toolbar/24x24/go-first.svg		\
+	image/toolbar/24x24/edit-find@2x.png	\
+	image/toolbar/24x24/go-first.png	\
+	image/toolbar/24x24/go-first.svg	\
+	image/toolbar/24x24/go-first@2x.png	\
 	image/toolbar/24x24/go-jump.png		\
 	image/toolbar/24x24/go-jump.svg		\
+	image/toolbar/24x24/go-jump@2x.png	\
 	image/toolbar/24x24/go-last.png		\
 	image/toolbar/24x24/go-last.svg		\
+	image/toolbar/24x24/go-last@2x.png	\
 	image/toolbar/24x24/go-next.png		\
 	image/toolbar/24x24/go-next.svg		\
-	image/toolbar/24x24/go-previous.png		\
-	image/toolbar/24x24/go-previous.svg		\
+	image/toolbar/24x24/go-next@2x.png	\
+	image/toolbar/24x24/go-previous.png	\
+	image/toolbar/24x24/go-previous.svg	\
+	image/toolbar/24x24/go-previous@2x.png	\
 	image/toolbar/24x24/x-capture-file-close.png		\
 	image/toolbar/24x24/x-capture-file-close.svg		\
+	image/toolbar/24x24/x-capture-file-close@2x.png		\
+	image/toolbar/24x24/x-capture-file-close@2x.svg		\
 	image/toolbar/24x24/x-capture-file-reload.png		\
 	image/toolbar/24x24/x-capture-file-reload.svg		\
+	image/toolbar/24x24/x-capture-file-reload@2x.png	\
 	image/toolbar/24x24/x-capture-file-save.png		\
+	image/toolbar/24x24/x-capture-file-save.svg		\
+	image/toolbar/24x24/x-capture-file-save@2x.png		\
+	image/toolbar/24x24/x-capture-file-save@2x.svg		\
 	image/toolbar/24x24/x-capture-options-gear.svg		\
 	image/toolbar/24x24/x-capture-options-wrench.svg	\
 	image/toolbar/24x24/x-capture-options.png		\
+	image/toolbar/24x24/x-capture-options@2x.png		\
 	image/toolbar/24x24/x-capture-restart-fin.svg		\
 	image/toolbar/24x24/x-capture-restart-triangle1.svg	\
 	image/toolbar/24x24/x-capture-restart-triangle2.svg	\
 	image/toolbar/24x24/x-capture-restart-turn1.svg		\
 	image/toolbar/24x24/x-capture-restart-turn2.svg		\
 	image/toolbar/24x24/x-capture-restart.png		\
+	image/toolbar/24x24/x-capture-restart@2x.png		\
 	image/toolbar/24x24/x-capture-start.on.png		\
 	image/toolbar/24x24/x-capture-start.on.svg		\
-	image/toolbar/24x24/x-capture-start.png			\
-	image/toolbar/24x24/x-capture-start.svg			\
-	image/toolbar/24x24/x-capture-stop-red.svg		\
-	image/toolbar/24x24/x-capture-stop-white.svg		\
-	image/toolbar/24x24/x-capture-stop.png			\
+	image/toolbar/24x24/x-capture-start.on@2x.png		\
+	image/toolbar/24x24/x-capture-start.png		\
+	image/toolbar/24x24/x-capture-start.svg		\
+	image/toolbar/24x24/x-capture-start@2x.png	\
+	image/toolbar/24x24/x-capture-stop-red.svg	\
+	image/toolbar/24x24/x-capture-stop-white.svg	\
+	image/toolbar/24x24/x-capture-stop.png		\
+	image/toolbar/24x24/x-capture-stop@2x.png	\
 	image/toolbar/24x24/x-colorize-packets.png	\
 	image/toolbar/24x24/x-colorize-packets.svg	\
+	image/toolbar/24x24/x-colorize-packets@2x.png	\
+	image/toolbar/24x24/x-resize-columns-motion.svg	\
 	image/toolbar/24x24/x-resize-columns.png	\
 	image/toolbar/24x24/x-resize-columns.svg	\
+	image/toolbar/24x24/x-resize-columns@2x.png	\
 	image/toolbar/24x24/x-stay-last.png		\
 	image/toolbar/24x24/x-stay-last.svg		\
+	image/toolbar/24x24/x-stay-last@2x.png		\
 	image/toolbar/24x24/zoom-in.png			\
 	image/toolbar/24x24/zoom-in.svg			\
+	image/toolbar/24x24/zoom-in@2x.png		\
 	image/toolbar/24x24/zoom-original.png		\
 	image/toolbar/24x24/zoom-original.svg		\
+	image/toolbar/24x24/zoom-original@2x.png	\
 	image/toolbar/24x24/zoom-out.png		\
 	image/toolbar/24x24/zoom-out.svg		\
+	image/toolbar/24x24/zoom-out@2x.png		\
 	image/toolbar.qrc			\
 	image/toolbar/analyze_24.xpm 		\
 	image/toolbar/audio_player_24.xpm	\
@@ -1044,6 +1091,7 @@ EXTRA_DIST = \
 	image/toolbar/remote_globe_16.png	\
 	image/toolbar/remote_sat_16.png	\
 	image/toolbar/resize_columns_24.xpm	\
+	image/toolbar/svg-to-png.sh	\
 	image/toolbar/telephone_16.xpm	\
 	image/toolbar/telephony_16.xpm	\
 	image/toolbar/time_24.xpm	\
@@ -1347,7 +1395,9 @@ osx-app: $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA) packaging/macosx/Info.plist
 		rm -rf $(stagedir) ; \
 		$(MAKE) DESTDIR=$(stagedir) install; \
 		cd $(srcdir)/packaging/macosx ;  \
-		./osx-app.sh @OSX_APP_FLAGS@ -bp ../staging/$(PACKAGE).inst$(bindir) ; \
+		./osx-app.sh @OSX_APP_FLAGS@ \
+			--create-bundle \
+			--binary-path ../staging/$(PACKAGE).inst$(bindir) ; \
 	else \
 		echo "Error: OS X packaging tools not found." ; \
 		echo "Package build abandoned." ; \

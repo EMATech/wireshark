@@ -45,6 +45,7 @@
 #include <epan/addr_resolv.h>
 #include <epan/show_exception.h>
 #include <epan/decode_as.h>
+#include <epan/dissectors/packet-tcp.h>
 #include <epan/dissectors/packet-dcerpc.h>
 #include <epan/dissectors/packet-dcerpc-nt.h>
 
@@ -1480,7 +1481,7 @@ dissect_dcerpc_uint8(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
     guint8 data;
 
     data = tvb_get_guint8(tvb, offset);
-    if (tree) {
+    if (tree && hfindex != -1) {
         proto_tree_add_item(tree, hfindex, tvb, offset, 1, DREP_ENC_INTEGER(drep));
     }
     if (pdata)
@@ -1499,7 +1500,7 @@ dissect_dcerpc_uint16(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
             ? tvb_get_letohs(tvb, offset)
             : tvb_get_ntohs(tvb, offset));
 
-    if (tree) {
+    if (tree && hfindex != -1) {
         proto_tree_add_item(tree, hfindex, tvb, offset, 2, DREP_ENC_INTEGER(drep));
     }
     if (pdata)
@@ -1518,7 +1519,7 @@ dissect_dcerpc_uint32(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
             ? tvb_get_letohl(tvb, offset)
             : tvb_get_ntohl(tvb, offset));
 
-    if (tree) {
+    if (tree && hfindex != -1) {
         proto_tree_add_item(tree, hfindex, tvb, offset, 4, DREP_ENC_INTEGER(drep));
     }
     if (pdata)
@@ -1541,7 +1542,7 @@ dissect_dcerpc_time_t(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
 
     tv.secs = data;
     tv.nsecs = 0;
-    if (tree) {
+    if (tree && hfindex != -1) {
         if (data == 0xffffffff) {
             /* special case,   no time specified */
             proto_tree_add_time_format_value(tree, hfindex, tvb, offset, 4, &tv, "No time specified");
@@ -1566,7 +1567,7 @@ dissect_dcerpc_uint64(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
             ? tvb_get_letoh64(tvb, offset)
             : tvb_get_ntoh64(tvb, offset));
 
-    if (tree) {
+    if (tree && hfindex != -1) {
         header_field_info *hfinfo;
 
         /* This might be a field that is either 32bit, in NDR or
@@ -1608,7 +1609,7 @@ dissect_dcerpc_float(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
         data = ((drep[0] & DREP_LITTLE_ENDIAN)
                 ? tvb_get_letohieee_float(tvb, offset)
                 : tvb_get_ntohieee_float(tvb, offset));
-        if (tree) {
+        if (tree && hfindex != -1) {
             proto_tree_add_float(tree, hfindex, tvb, offset, 4, data);
         }
         break;
@@ -1619,7 +1620,7 @@ dissect_dcerpc_float(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
         /* ToBeDone: non IEEE floating formats */
         /* Set data to a negative infinity value */
         data = -G_MAXFLOAT;
-        if (tree) {
+        if (tree && hfindex != -1) {
             proto_tree_add_debug_text(tree, "DCE RPC: dissection of non IEEE floating formats currently not implemented (drep=%u)!", drep[1]);
         }
     }
@@ -1642,7 +1643,7 @@ dissect_dcerpc_double(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
         data = ((drep[0] & DREP_LITTLE_ENDIAN)
                 ? tvb_get_letohieee_double(tvb, offset)
                 : tvb_get_ntohieee_double(tvb, offset));
-        if (tree) {
+        if (tree && hfindex != -1) {
             proto_tree_add_double(tree, hfindex, tvb, offset, 8, data);
         }
         break;
@@ -1653,7 +1654,7 @@ dissect_dcerpc_double(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
         /* ToBeDone: non IEEE double formats */
         /* Set data to a negative infinity value */
         data = -G_MAXDOUBLE;
-        if (tree) {
+        if (tree && hfindex != -1) {
             proto_tree_add_debug_text(tree, "DCE RPC: dissection of non IEEE double formats currently not implemented (drep=%u)!", drep[1]);
         }
     }
@@ -1676,7 +1677,7 @@ dissect_dcerpc_uuid_t(tvbuff_t *tvb, gint offset, packet_info *pinfo _U_,
     } else {
         tvb_get_ntohguid(tvb, offset, (e_guid_t *) &uuid);
     }
-    if (tree) {
+    if (tree && hfindex != -1) {
         proto_tree_add_guid(tree, hfindex, tvb, offset, 16, (e_guid_t *) &uuid);
     }
     if (pdata) {
@@ -2753,7 +2754,7 @@ show_stub_data(tvbuff_t *tvb, gint offset, proto_tree *dcerpc_tree,
      * bytes, the reported number of bytes, not the number of bytes
      * that happen to be in the tvbuff.
      */
-    if (tvb_length_remaining(tvb, offset) > 0) {
+    if (tvb_reported_length_remaining(tvb, offset) > 0) {
         auth_pad_len = auth_info?auth_info->auth_pad_len:0;
         length = tvb_reported_length_remaining(tvb, offset);
 
@@ -2914,7 +2915,7 @@ dcerpc_try_handoff(packet_info *pinfo, proto_tree *tree,
 
             init_ndr_pointer_list(info);
 
-            length = tvb_length(decrypted_tvb);
+            length = tvb_captured_length(decrypted_tvb);
             reported_length = tvb_reported_length(decrypted_tvb);
 
             /*
@@ -3153,7 +3154,7 @@ dissect_dcerpc_cn_auth(tvbuff_t *tvb, int stub_offset, packet_info *pinfo,
                     dcerpc_auth_subdissector_fns *auth_fns;
 
                     auth_tvb = tvb_new_subset(tvb, offset,
-                                              MIN(hdr->auth_len,tvb_length_remaining(tvb, offset)),
+                                              MIN(hdr->auth_len,tvb_reported_length_remaining(tvb, offset)),
                                               hdr->auth_len);
 
                     if ((auth_fns = get_auth_subdissector_fns(auth_info->auth_level,
@@ -3577,7 +3578,7 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
 
     save_fragmented = pinfo->fragmented;
 
-    length = tvb_length_remaining(tvb, offset);
+    length = tvb_reported_length_remaining(tvb, offset);
     reported_length = tvb_reported_length_remaining(tvb, offset);
     if (reported_length < 0 ||
         (guint32)reported_length < auth_info->auth_size) {
@@ -3595,8 +3596,8 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
     /*XXX we should really make sure we calculate auth_info->auth_data
       and use that one instead of this auth_tvb hack
     */
-    if (tvb_length(tvb) == tvb_reported_length(tvb)) {
-        if (tvb_length_remaining(tvb, offset+length) > 8) {
+    if (tvb_reported_length(tvb) == tvb_reported_length(tvb)) {
+        if (tvb_reported_length_remaining(tvb, offset+length) > 8) {
             auth_tvb = tvb_new_subset_remaining(tvb, offset+length+8);
         }
     }
@@ -3636,7 +3637,7 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
                         "Encrypted stub data (%d byte%s)",
                         tvb_reported_length(payload_tvb),
 
-                        plurality(tvb_length(payload_tvb), "", "s"));
+                        plurality(tvb_reported_length(payload_tvb), "", "s"));
 
                 add_new_data_source(
                     pinfo, result, "Decrypted stub data");
@@ -3666,7 +3667,7 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
     /* debug output of essential fragment data. */
     /* leave it here for future debugging sessions */
     /*printf("DCE num:%u offset:%u frag_len:%u tvb_len:%u\n",
-      pinfo->fd->num, offset, hdr->frag_len, tvb_length(decrypted_tvb));*/
+      pinfo->fd->num, offset, hdr->frag_len, tvb_reported_length(decrypted_tvb));*/
 
     /* if we are not doing reassembly and this is the first fragment
        then just dissect it and exit
@@ -3698,7 +3699,7 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
        nor the first fragment then there is nothing more we can do
        so we just have to exit
     */
-    if ( !dcerpc_reassemble || (tvb_length(tvb) != tvb_reported_length(tvb)) )
+    if ( !dcerpc_reassemble || (tvb_captured_length(tvb) != tvb_reported_length(tvb)) )
         goto end_cn_stub;
 
     /* if we didn't get 'frame' we don't know where the PDU started and thus
@@ -3729,7 +3730,7 @@ dissect_dcerpc_cn_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
      */
     fd_head = fragment_add_seq_next(&dcerpc_co_reassembly_table,
                                     decrypted_tvb, 0, pinfo, frame, NULL,
-                                    tvb_length(decrypted_tvb),
+                                    tvb_reported_length(decrypted_tvb),
                                     hdr->flags&PFC_LAST_FRAG ? FALSE : TRUE /* more_frags */);
 
 end_cn_stub:
@@ -4222,7 +4223,7 @@ dissect_dcerpc_cn_fault(tvbuff_t *tvb, gint offset, packet_info *pinfo,
                 proto_tree_add_expert(dcerpc_tree, pinfo, &ei_dcerpc_no_request_found, tvb, 0, 0);
             }
 
-            length = tvb_length_remaining(tvb, offset);
+            length = tvb_reported_length_remaining(tvb, offset);
             /* as we now create a tvb in dissect_dcerpc_cn() containing only the
              * stub_data, the following calculation is no longer valid:
              * stub_length = hdr->frag_len - offset - auth_info.auth_size;
@@ -4659,6 +4660,29 @@ dissect_dcerpc_cn_rts(tvbuff_t *tvb, gint offset, packet_info *pinfo,
     }
 }
 
+static gboolean
+is_dcerpc(tvbuff_t *tvb, int offset, packet_info *pinfo _U_)
+{
+    guint8 rpc_ver;
+    guint8 rpc_ver_minor;
+    guint8 ptype;
+
+    if (!tvb_bytes_exist(tvb, offset, sizeof(e_dce_cn_common_hdr_t)))
+        return FALSE;   /* not enough information to check */
+
+    rpc_ver = tvb_get_guint8(tvb, offset++);
+    if (rpc_ver != 5)
+        return FALSE;
+    rpc_ver_minor = tvb_get_guint8(tvb, offset++);
+    if ((rpc_ver_minor != 0) && (rpc_ver_minor != 1))
+        return FALSE;
+    ptype = tvb_get_guint8(tvb, offset++);
+    if (ptype > PDU_RTS)
+        return FALSE;
+
+    return TRUE;
+}
+
 /*
  * DCERPC dissector for connection oriented calls.
  * We use transport type to later multiplex between what kind of
@@ -4702,19 +4726,13 @@ dissect_dcerpc_cn(tvbuff_t *tvb, int offset, packet_info *pinfo,
     /*
      * Check if this looks like a C/O DCERPC call
      */
-    if (!tvb_bytes_exist(tvb, offset, sizeof (hdr))) {
-        return FALSE;   /* not enough information to check */
-    }
+    if (!is_dcerpc(tvb, offset, pinfo))
+        return FALSE;
+
     start_offset = offset;
     hdr.rpc_ver = tvb_get_guint8(tvb, offset++);
-    if (hdr.rpc_ver != 5)
-        return FALSE;
     hdr.rpc_ver_minor = tvb_get_guint8(tvb, offset++);
-    if ((hdr.rpc_ver_minor != 0) && (hdr.rpc_ver_minor != 1))
-        return FALSE;
     hdr.ptype = tvb_get_guint8(tvb, offset++);
-    if (hdr.ptype > PDU_RTS)
-        return FALSE;
 
     hdr.flags = tvb_get_guint8(tvb, offset++);
     tvb_memcpy(tvb, (guint8 *)hdr.drep, offset, sizeof (hdr.drep));
@@ -4738,7 +4756,7 @@ dissect_dcerpc_cn(tvbuff_t *tvb, int offset, packet_info *pinfo,
     if (can_desegment && pinfo->can_desegment
         && !tvb_bytes_exist(tvb, start_offset, hdr.frag_len)) {
         pinfo->desegment_offset = start_offset;
-        pinfo->desegment_len = hdr.frag_len - tvb_length_remaining(tvb, start_offset);
+        pinfo->desegment_len = hdr.frag_len - tvb_reported_length_remaining(tvb, start_offset);
         *pkt_len = 0;   /* desegmentation required */
         return TRUE;
     }
@@ -4849,7 +4867,7 @@ dissect_dcerpc_cn(tvbuff_t *tvb, int offset, packet_info *pinfo,
      * (and other functions might fail as well) computing the right start
      * offset otherwise.
      */
-    subtvb_len = MIN(hdr.frag_len, tvb_length(tvb));
+    subtvb_len = MIN(hdr.frag_len, tvb_reported_length(tvb));
     fragment_tvb = tvb_new_subset(tvb, start_offset,
                                   subtvb_len /* length */,
                                   hdr.frag_len /* reported_length */);
@@ -5014,7 +5032,7 @@ dissect_dcerpc_cn_bs_body(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
                  * it was just too short to tell and ask the TCP layer for more
                  * data. */
                 pinfo->desegment_offset = offset;
-                pinfo->desegment_len = (guint32)(sizeof(e_dce_cn_common_hdr_t) - tvb_length_remaining(tvb, offset));
+                pinfo->desegment_len = (guint32)(sizeof(e_dce_cn_common_hdr_t) - tvb_reported_length_remaining(tvb, offset));
             } else {
                 /* Really not DCE-RPC */
                 break;
@@ -5061,6 +5079,44 @@ dissect_dcerpc_cn_bs(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *
     return dissect_dcerpc_cn_bs_body(tvb, pinfo, tree);
 }
 
+static guint
+get_dcerpc_pdu_len(packet_info *pinfo _U_, tvbuff_t *tvb, int offset _U_)
+{
+    guint8 drep[4];
+    guint16 frag_len;
+
+    tvb_memcpy(tvb, (guint8 *)drep, 4, sizeof(drep));
+    frag_len = dcerpc_tvb_get_ntohs(tvb, 8, drep);
+
+    return frag_len;
+}
+
+static int
+dissect_dcerpc_pdu(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
+{
+    int  pdu_len     = 0;
+    dissect_dcerpc_cn(tvb, 0, pinfo, tree,
+                                  /* Desegment is already handled by TCP, don't confuse it */
+                                  FALSE,
+                                  &pdu_len);
+    return pdu_len;
+}
+
+static gboolean
+dissect_dcerpc_tcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
+{
+    dcerpc_decode_as_data* decode_data;
+
+    if (!is_dcerpc(tvb, 0, pinfo))
+        return 0;
+
+    decode_data = dcerpc_get_decode_data(pinfo);
+    decode_data->dcetransporttype = DCE_TRANSPORT_UNKNOWN;
+
+    tcp_dissect_pdus(tvb, pinfo, tree, dcerpc_cn_desegment, 10, get_dcerpc_pdu_len, dissect_dcerpc_pdu, data);
+    return TRUE;
+}
+
 static gboolean
 dissect_dcerpc_cn_smbpipe(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_)
 {
@@ -5104,7 +5160,7 @@ dissect_dcerpc_dg_auth(tvbuff_t *tvb, int offset, proto_tree *dcerpc_tree,
      * packet body, then dissect the auth info.
      */
     offset += hdr->frag_len;
-    if (tvb_length_remaining(tvb, offset) > 0) {
+    if (tvb_reported_length_remaining(tvb, offset) > 0) {
         switch (hdr->auth_proto) {
 
         case DCE_C_RPC_AUTHN_PROTOCOL_KRB5:
@@ -5263,7 +5319,7 @@ dissect_dcerpc_dg_stub(tvbuff_t *tvb, int offset, packet_info *pinfo,
     col_append_fstr(pinfo->cinfo, COL_INFO, " opnum: %u len: %u",
                     di->call_data->opnum, hdr->frag_len );
 
-    length = tvb_length_remaining(tvb, offset);
+    length = tvb_reported_length_remaining(tvb, offset);
     reported_length = tvb_reported_length_remaining(tvb, offset);
     stub_length = hdr->frag_len;
     if (length > stub_length)
@@ -5559,7 +5615,7 @@ dissect_dcerpc_dg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *dat
      * have an 80 byte header on them.  Which starts with
      * version (4), pkt_type.
      */
-    if (tvb_length(tvb) < sizeof (hdr)) {
+    if (tvb_reported_length(tvb) < sizeof (hdr)) {
         return FALSE;
     }
 
@@ -6329,7 +6385,7 @@ proto_register_dcerpc(void)
 void
 proto_reg_handoff_dcerpc(void)
 {
-    heur_dissector_add("tcp", dissect_dcerpc_cn_bs, proto_dcerpc);
+    heur_dissector_add("tcp", dissect_dcerpc_tcp, proto_dcerpc);
     heur_dissector_add("netbios", dissect_dcerpc_cn_pk, proto_dcerpc);
     heur_dissector_add("udp", dissect_dcerpc_dg, proto_dcerpc);
     heur_dissector_add("smb_transact", dissect_dcerpc_cn_smbpipe, proto_dcerpc);

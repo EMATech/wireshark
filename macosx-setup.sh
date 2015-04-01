@@ -154,14 +154,14 @@ uninstall() {
         # old configurations.
         #
 
-        installed_cares_version=`ls cares-*-done 2>/dev/null | sed 's/cares-\(.*\)-done/\1/'`
+        installed_cares_version=`ls c-ares-*-done 2>/dev/null | sed 's/c-ares-\(.*\)-done/\1/'`
         if [ ! -z "$installed_cares_version" ] ; then
             echo "Uninstalling C-Ares API:"
-            cd cares-$installed_cares_version
+            cd c-ares-$installed_cares_version
             $DO_MAKE_UNINSTALL || exit 1
             make distclean || exit 1
             cd ..
-            rm cares-$installed_cares_version-done
+            rm c-ares-$installed_cares_version-done
         fi
 
         installed_geoip_version=`ls geoip-*-done 2>/dev/null | sed 's/geoip-\(.*\)-done/\1/'`
@@ -452,6 +452,11 @@ do
     if [ -d "$i" ]
     then
         min_osx_target=`sw_vers -productVersion | sed 's/\([[0-9]]*\).\([[0-9]]*\).[[0-9]]*/\1.\2/'`
+
+        #
+        # That's also the OS whose SDK we'd be using.
+        #
+        sdk_target=$min_osx_target
         break
     fi
 done
@@ -518,31 +523,79 @@ if [ -z "$MAKE_BUILD_OPTS" ] ; then
 fi
 
 #
-# If we have a target release, look for its SDK, and build libraries
-# against it rather than against the headers and, more importantly,
-# libraries that come with the OS, so that we don't end up with
-# support libraries that only work on the OS version on which
-# we built them, not earlier versions of the same release, or
-# earlier releases if the minimum is earlier.
+# If we have a target release, look for the oldest SDK that's for an
+# OS equal to or later than that one, and build libraries against it
+# rather than against the headers and, more importantly, libraries
+# that come with the OS, so that we don't end up with support libraries
+# that only work on the OS version on which we built them, not earlier
+# versions of the same release, or earlier releases if the minimum is
+# earlier.
 #
 if [ ! -z "$min_osx_target" ]
 then
-    for i in /Developer/SDKs \
+    #
+    # Get the real version - strip off the "10.".
+    # We'll worry about that if, as, and when there's ever
+    # an OS XI.
+    #
+    deploy_real_version=`echo "$min_osx_target" | sed -n 's/10\.\(.*\)/\1/p'`
+
+    #
+    # Search each directory that might contain SDKs.
+    #
+    sdkpath=""
+    for sdksdir in /Developer/SDKs \
         /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs \
         /Library/Developer/CommandLineTools/SDKs
     do
-        if [ -d "$i"/"MacOSX$min_osx_target.sdk" ]
+        #
+        # Get a list of all the SDKs.
+        #
+        if ! test -d "$sdksdir"
         then
-            SDKPATH="$i"/"MacOSX$min_osx_target.sdk"
-            break
+            #
+            # There is no directory with that name.
+            # Move on to the next one in the list, if any.
+            #
+            continue
         fi
+
+        #
+        # Get a list of all the SDKs in that directory, if any.
+        #
+        sdklist=`(cd "$sdksdir"; ls -d MacOSX10.[0-9]*.sdk 2>/dev/null)`
+
+        for sdk in $sdklist
+        do
+            #
+            # Get the real version for this SDK.
+            #
+            sdk_real_version=`echo "$sdk" | sed -n 's/MacOSX10\.\(.*\)\.sdk/\1/p'`
+
+            #
+            # Is it for the deployment target or some later release?
+            #
+            if test "$sdk_real_version" -ge "$deploy_real_version"
+            then
+                #
+                # Yes, use it.
+                #
+                sdkpath="$sdksdir/$sdk"
+                qt_sdk_arg="-sdk $sdk"
+                break 2
+            fi
+        done
     done
 
-    if [ -z "$SDKPATH" ]
+    if [ -z "$sdkpath" ]
     then
-        echo "macosx-setup.sh: Couldn't find the SDK for OS X $min_osx_target" 1>&2
+        echo "macosx-setup.sh: Couldn't find an SDK for OS X $min_osx_target or later" 1>&2
         exit 1
     fi
+
+    SDKPATH="$sdkpath"
+    sdk_target=10.$sdk_real_version
+    echo "Using the 10.$sdk_real_version SDK"
 
     #
     # Make sure there are links to /usr/local/include and /usr/local/lib
@@ -891,9 +944,9 @@ if [ ! -f glib-$GLIB_VERSION-done ] ; then
     if grep -qs '#define.*MACOSX' $includedir/ffi/fficonfig.h
     then
         # It's defined, nothing to do
-        LIBFFI_CFLAGS="-I $includedir/ffi" LIBFFI_LIBS="-lffi" CFLAGS="$CFLAGS -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+        LIBFFI_CFLAGS="-I $includedir/ffi" LIBFFI_LIBS="-lffi" CFLAGS="$CFLAGS -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     else
-        LIBFFI_CFLAGS="-I $includedir/ffi" LIBFFI_LIBS="-lffi" CFLAGS="$CFLAGS -DMACOSX -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+        LIBFFI_CFLAGS="-I $includedir/ffi" LIBFFI_LIBS="-lffi" CFLAGS="$CFLAGS -DMACOSX -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS -DMACOSX -Wno-format-nonliteral $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     fi
 
     #
@@ -948,7 +1001,7 @@ if [ "$QT_VERSION" -a ! -f qt-$QT_VERSION-done ]; then
     # Qt 5.x fails to build on OS X with -no-opengl due to bug
     # QTBUG-31151.
     #
-    ./configure -v -sdk macosx$min_osx_target -platform $TARGET_PLATFORM \
+    ./configure -v $qt_sdk_arg -platform $TARGET_PLATFORM \
         -opensource -confirm-license -no-c++11 -no-dbus \
         -no-sql-sqlite -no-xcb -nomake examples \
         -skip qtdoc -skip qtquickcontrols -skip qtwebkit \
@@ -991,7 +1044,7 @@ if [ "$GTK_VERSION" ]; then
             [ -f libpng-$PNG_VERSION.tar.xz ] || curl -O ftp://ftp.simplesystems.org/pub/libpng/png/src/$subdir/libpng-$PNG_VERSION.tar.xz
             xzcat libpng-$PNG_VERSION.tar.xz | tar xf - || exit 1
             cd libpng-$PNG_VERSION
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
             make $MAKE_BUILD_OPTS || exit 1
             $DO_MAKE_INSTALL || exit 1
             cd ..
@@ -1011,8 +1064,8 @@ if [ "$GTK_VERSION" ]; then
             [ -f pixman-$PIXMAN_VERSION.tar.gz ] || curl -O http://www.cairographics.org/releases/pixman-$PIXMAN_VERSION.tar.gz
             gzcat pixman-$PIXMAN_VERSION.tar.gz | tar xf - || exit 1
             cd pixman-$PIXMAN_VERSION
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
-            make V=1 $MAKE_BUILD_OPTS || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+            make $MAKE_BUILD_OPTS || exit 1
             $DO_MAKE_INSTALL || exit 1
             cd ..
             touch pixman-$PIXMAN_VERSION-done
@@ -1044,9 +1097,9 @@ if [ "$GTK_VERSION" ]; then
                 gzcat cairo-$CAIRO_VERSION.tar.gz | tar xf - || exit 1
             fi
             cd cairo-$CAIRO_VERSION
-            # CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --enable-quartz=no || exit 1
+            # CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --enable-quartz=no || exit 1
             # Maybe follow http://cairographics.org/end_to_end_build_for_mac_os_x/
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --enable-quartz=yes || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --enable-quartz=yes || exit 1
             #
             # We must avoid the version of libpng that comes with X11; the
             # only way I've found to force that is to forcibly set INCLUDES
@@ -1081,7 +1134,7 @@ if [ "$GTK_VERSION" ]; then
             bzcat atk-$ATK_VERSION.tar.bz2 | tar xf - || exit 1
         fi
         cd atk-$ATK_VERSION
-        CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+        CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
         make $MAKE_BUILD_OPTS || exit 1
         $DO_MAKE_INSTALL || exit 1
         cd ..
@@ -1107,7 +1160,7 @@ if [ "$GTK_VERSION" ]; then
             bzcat pango-$PANGO_VERSION.tar.bz2 | tar xf - || exit 1
         fi
         cd pango-$PANGO_VERSION
-        CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+        CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
         make $MAKE_BUILD_OPTS || exit 1
         $DO_MAKE_INSTALL || exit 1
         cd ..
@@ -1121,20 +1174,20 @@ if [ "$GTK_VERSION" ]; then
         xzcat gdk-pixbuf-$GDK_PIXBUF_VERSION.tar.xz | tar xf - || exit 1
         cd gdk-pixbuf-$GDK_PIXBUF_VERSION
         #
-        # If we're building for 10.6, use libpng12; if you have 10.7.5, including
-        # X11, and Xcode 4.3.3, the system has libpng15, complete with pkg-config
-        # files, as part of X11, but 10.6's X11 has only libpng12, and the 10.6
-        # SDK in Xcode 4.3.3 also has only libpng12, and has no pkg-config files
-        # of its own, so we have to explicitly set LIBPNG to override the
-        # configure script, and also force the CFLAGS to look for the header
-        # files for libpng12 (note that -isysroot doesn't affect the arguments
-        # to -I, so we need to include the SDK path explicitly).
+        # If we're building using the 10.6 SDK, force the use of libpng12.
         #
-        if [[ "$min_osx_target" = 10.6 ]]
+        # The OS's X11, and corresponding SDK, didn't introduce libpng15,
+        # or pkg-config files, until 10.7, so, for 10.6 have to explicitly
+        # set LIBPNG to override the configure script, and also force the
+        # CFLAGS to look for the header files for libpng12 (note that
+        # -isysroot doesn't affect the arguments to -I, so we need to
+        # include the SDK path explicitly).
+        #
+        if [[ "$sdk_target" = 10.6 ]]
         then
-            LIBPNG="-L/usr/X11/lib -lpng12" CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS -I$SDKPATH/usr/X11/include/libpng12" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
+            LIBPNG="-L/usr/X11/lib -lpng12" CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS -I$SDKPATH/usr/X11/include/libpng12" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS -I$SDKPATH/usr/X11/include/libpng12" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
         else
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
         fi
         make $MAKE_BUILD_OPTS || exit 1
         $DO_MAKE_INSTALL || exit 1
@@ -1176,9 +1229,9 @@ if [ "$GTK_VERSION" ]; then
             # just ignore unknown --enable/--disable and --with/--without
             # options (at least they've always do so up to now).
             #
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-cups --without-libtiff --without-libjpeg || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-cups --without-libtiff --without-libjpeg || exit 1
         else
-            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
+            CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --without-libtiff --without-libjpeg || exit 1
         fi
         make $MAKE_BUILD_OPTS || exit 1
         $DO_MAKE_INSTALL || exit 1
@@ -1202,7 +1255,7 @@ if [ "$LIBSMI_VERSION" -a ! -f libsmi-$LIBSMI_VERSION-done ] ; then
     [ -f libsmi-$LIBSMI_VERSION.tar.gz ] || curl -L -O https://www.ibr.cs.tu-bs.de/projects/libsmi/download/libsmi-$LIBSMI_VERSION.tar.gz || exit 1
     gzcat libsmi-$LIBSMI_VERSION.tar.gz | tar xf - || exit 1
     cd libsmi-$LIBSMI_VERSION
-    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     $DO_MAKE_INSTALL || exit 1
     cd ..
@@ -1214,7 +1267,7 @@ if [ "$LIBGPG_ERROR_VERSION" -a ! -f libgpg-error-$LIBGPG_ERROR_VERSION-done ] ;
     [ -f libgpg-error-$LIBGPG_ERROR_VERSION.tar.bz2 ] || curl -L -O ftp://ftp.gnupg.org/gcrypt/libgpg-error/libgpg-error-$LIBGPG_ERROR_VERSION.tar.bz2 || exit 1
     bzcat libgpg-error-$LIBGPG_ERROR_VERSION.tar.bz2 | tar xf - || exit 1
     cd libgpg-error-$LIBGPG_ERROR_VERSION
-    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     $DO_MAKE_INSTALL || exit 1
     cd ..
@@ -1244,7 +1297,7 @@ if [ "$LIBGCRYPT_VERSION" -a ! -f libgcrypt-$LIBGCRYPT_VERSION-done ] ; then
     #
     #    http://lists.freebsd.org/pipermail/freebsd-ports-bugs/2010-October/198809.html
     #
-    CFLAGS="$CFLAGS -std=gnu89 $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-asm || exit 1
+    CFLAGS="$CFLAGS -std=gnu89 $VERSION_MIN_FLAGS $SDKFLAGS" CFLAGS="$CFLAGS -std=gnu89 $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-asm || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     $DO_MAKE_INSTALL || exit 1
     cd ..
@@ -1270,7 +1323,7 @@ if [ "$GNUTLS_VERSION" -a ! -f gnutls-$GNUTLS_VERSION-done ] ; then
     # XXX - is there some reason to prefer nettle?  Or does
     # Wireshark directly use libgcrypt routines?
     #
-    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --with-libgcrypt --without-p11-kit || exit 1
+    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --with-libgcrypt --without-p11-kit || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     #
     # The pkgconfig file for GnuTLS says "requires zlib", but OS X,
@@ -1325,7 +1378,7 @@ if [ "$PORTAUDIO_VERSION" -a ! -f portaudio-done ] ; then
     # this build on an OS+Xcode with a pre-10.4 SDK; we don't
     # worry about the user requesting that.)
     #
-    CFLAGS="$CFLAGS -mmacosx-version-min=10.4 $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-mac-universal || exit 1
+    CFLAGS="$CFLAGS -mmacosx-version-min=10.4 $SDKFLAGS" CXXFLAGS="$CXXFLAGS -mmacosx-version-min=10.4 $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure --disable-mac-universal || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     $DO_MAKE_INSTALL || exit 1
     cd ..
@@ -1338,7 +1391,7 @@ then
     [ -f GeoIP-$GEOIP_VERSION.tar.gz ] || curl -L -O http://geolite.maxmind.com/download/geoip/api/c/GeoIP-$GEOIP_VERSION.tar.gz || exit 1
     gzcat GeoIP-$GEOIP_VERSION.tar.gz | tar xf - || exit 1
     cd GeoIP-$GEOIP_VERSION
-    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     #
     # Grr.  Their man pages "helpfully" have an ISO 8859-1
     # copyright symbol in the copyright notice, but OS X's
@@ -1360,17 +1413,17 @@ then
     touch geoip-$GEOIP_VERSION-done
 fi
 
-if [ "$CARES_VERSION" -a ! -f geoip-$CARES_VERSION-done ]
+if [ "$CARES_VERSION" -a ! -f c-ares-$CARES_VERSION-done ]
 then
     echo "Downloading, building, and installing C-Ares API:"
     [ -f c-ares-$CARES_VERSION.tar.gz ] || curl -L -O http://c-ares.haxx.se/download/c-ares-$CARES_VERSION.tar.gz || exit 1
     gzcat c-ares-$CARES_VERSION.tar.gz | tar xf - || exit 1
     cd c-ares-$CARES_VERSION
-    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
+    CFLAGS="$CFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" CXXFLAGS="$CXXFLAGS $VERSION_MIN_FLAGS $SDKFLAGS"  LDFLAGS="$LDFLAGS $VERSION_MIN_FLAGS $SDKFLAGS" ./configure || exit 1
     make $MAKE_BUILD_OPTS || exit 1
     $DO_MAKE_INSTALL || exit 1
     cd ..
-    touch geoip-$CARES_VERSION-done
+    touch c-ares-$CARES_VERSION-done
 fi
 
 echo ""

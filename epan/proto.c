@@ -5262,7 +5262,7 @@ proto_register_fields_manual(const int parent, header_field_info **hfi, const in
 void
 proto_unregister_field (const int parent, gint hf_id)
 {
-	hf_register_info *hf;
+	header_field_info *hfi;
 	protocol_t       *proto;
 	guint             i;
 
@@ -5275,10 +5275,10 @@ proto_unregister_field (const int parent, gint hf_id)
 	}
 
 	for (i = 0; i < proto->fields->len; i++) {
-		hf = (hf_register_info *)g_ptr_array_index(proto->fields, i);
-		if (*hf->p_id == hf_id) {
+		hfi = (header_field_info *)g_ptr_array_index(proto->fields, i);
+		if (hfi->id == hf_id) {
 			/* Found the hf_id in this protocol */
-			g_hash_table_steal(gpa_name_map, hf->hfinfo.abbrev);
+			g_hash_table_steal(gpa_name_map, hfi->abbrev);
 			g_ptr_array_remove_index_fast(proto->fields, i);
 			return;
 		}
@@ -5287,7 +5287,7 @@ proto_unregister_field (const int parent, gint hf_id)
 
 /* chars allowed in field abbrev */
 static
-const guchar fld_abbrev_chars[256] = {
+const guint8 fld_abbrev_chars[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0x00-0x0F */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, /* 0x10-0x1F */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, /* 0x20-0x2F '-', '.'	   */
@@ -5645,7 +5645,10 @@ proto_register_field_init(header_field_info *hfinfo, const int parent)
 		 * it must contain only alphanumerics, '-', "_", and ".". */
 		c = wrs_check_charset(fld_abbrev_chars, hfinfo->abbrev);
 		if (c) {
-			fprintf(stderr, "Invalid character '%c' in filter name '%s'\n", c, hfinfo->abbrev);
+			if (g_ascii_isprint(c))
+				fprintf(stderr, "Invalid character '%c' in filter name '%s'\n", c, hfinfo->abbrev);
+			else
+				fprintf(stderr, "Invalid byte \\%03o in filter name '%s'\n", c, hfinfo->abbrev);
 			DISSECTOR_ASSERT_NOT_REACHED();
 		}
 
@@ -6658,7 +6661,7 @@ check_for_offset(proto_node *node, const gpointer data)
 	offset_search_t	*offsearch = (offset_search_t *)data;
 
 	/* !fi == the top most container node which holds nothing */
-	if (fi && !PROTO_ITEM_IS_HIDDEN(node) && fi->ds_tvb && offsearch->tvb == fi->ds_tvb) {
+    if (fi && !PROTO_ITEM_IS_HIDDEN(node) && !PROTO_ITEM_IS_GENERATED(node) && fi->ds_tvb && offsearch->tvb == fi->ds_tvb) {
 		if (offsearch->offset >= (guint) fi->start &&
 				offsearch->offset < (guint) (fi->start + fi->length)) {
 

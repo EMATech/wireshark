@@ -3496,7 +3496,7 @@ Michał Łabędzki		<michal.labedzki[AT]tieto.com> {
 	Bluetooth SDP significant improvements
 	Ubertooth USB firmware dissector
 	ELF file dissector
-	Android ADB Client-Server dissector
+	Android ADB dissectors
 	Android Logcat binary logs support
 }
 
@@ -3621,6 +3621,10 @@ Gilles Roudiere		<gilles[AT]roudiere.net> {
 
 Alexander Gaertner	<gaertner.alex[AT]gmx.de> {
 	KNXnetIP dissector
+}
+
+Raphaël Doursenaud	<rdoursenaud[AT]free.fr> {
+	Harman Pro HiQnet dissector
 }
 
 and by:

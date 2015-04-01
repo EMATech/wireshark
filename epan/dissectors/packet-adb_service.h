@@ -1,4 +1,4 @@
-/* strncasecmp.h
+/* packet-adb_service.h
  *
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
@@ -19,22 +19,31 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef __STRNCASECMP_H__
-#define __STRNCASECMP_H__
+#ifndef __PACKET_ADB_SERVICE_H__
+#define __PACKET_ADB_SERVICE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+gint dissect_ascii_uint32(proto_tree *tree, gint hf_hex_ascii, gint ett_hex_ascii,
+        gint hf_value, tvbuff_t *tvb, gint offset, guint32 *value);
 
-#include "ws_symbol_export.h"
+typedef struct {
+    guint32        session_key_length;
+    guint32       *session_key;
+
+    const guint8  *service;
+    gint           direction;
+} adb_service_data_t;
+
+#endif /* __PACKET_ADB_SERVICE_H__ */
 
 /*
- * Version of "strncasecmp()", for the benefit of OSes that don't have it.
+ * Editor modelines  -  http://www.wireshark.org/tools/modelines.html
+ *
+ * Local variables:
+ * c-basic-offset: 4
+ * tab-width: 8
+ * indent-tabs-mode: nil
+ * End:
+ *
+ * vi: set shiftwidth=4 tabstop=8 expandtab:
+ * :indentSize=4:tabSize=8:noTabs=true:
  */
-WS_DLL_PUBLIC int strncasecmp (const char *, const char *, size_t);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif

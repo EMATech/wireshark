@@ -93,15 +93,15 @@ typedef struct peektagged_section_header {
 #define TAG_PEEKTAGGED_LENGTH			0x0000
 #define TAG_PEEKTAGGED_TIMESTAMP_LOWER		0x0001
 #define TAG_PEEKTAGGED_TIMESTAMP_UPPER		0x0002
-#define TAG_PEEKTAGGED_FLAGS_AND_STATUS		0x0003
+#define TAG_PEEKTAGGED_FLAGS_AND_STATUS		0x0003	/* upper 24 bits unused? */
 #define TAG_PEEKTAGGED_CHANNEL			0x0004
-#define TAG_PEEKTAGGED_RATE			0x0005
+#define TAG_PEEKTAGGED_DATA_RATE_OR_MCS_INDEX	0x0005
 #define TAG_PEEKTAGGED_SIGNAL_PERC		0x0006
 #define TAG_PEEKTAGGED_SIGNAL_DBM		0x0007
 #define TAG_PEEKTAGGED_NOISE_PERC		0x0008
 #define TAG_PEEKTAGGED_NOISE_DBM		0x0009
 #define TAG_PEEKTAGGED_UNKNOWN_0x000A		0x000A
-#define TAG_PEEKTAGGED_UNKNOWN_0x000D		0x000D	/* frequency? */
+#define TAG_PEEKTAGGED_CENTER_FREQUENCY		0x000D	/* Frequency */
 #define TAG_PEEKTAGGED_UNKNOWN_0x000E		0x000E
 #define TAG_PEEKTAGGED_UNKNOWN_0x000F		0x000F	/* 000F-0013 - dBm values? */
 #define TAG_PEEKTAGGED_UNKNOWN_0x0010		0x0010
@@ -109,9 +109,105 @@ typedef struct peektagged_section_header {
 #define TAG_PEEKTAGGED_UNKNOWN_0x0012		0x0012
 #define TAG_PEEKTAGGED_UNKNOWN_0x0013		0x0013
 #define TAG_PEEKTAGGED_UNKNOWN_0x0014		0x0014
-#define TAG_PEEKTAGGED_UNKNOWN_0x0015		0x0015
+#define TAG_PEEKTAGGED_EXT_FLAGS		0x0015	/* Extended flags for 802.11n and beyond */
 
 #define TAG_PEEKTAGGED_SLICE_LENGTH		0xffff
+
+/*
+ * Flags.
+ *
+ * We're assuming here that the "remote Peek" flags from bug 9586 are
+ * the same as the "Peek tagged" flags.
+ */
+#define FLAGS_CONTROL_FRAME	0x01	/* Frame is a control frame */
+#define FLAGS_HAS_CRC_ERROR	0x02	/* Frame has a CRC error */
+#define FLAGS_HAS_FRAME_ERROR	0x04	/* Frame has a frame error */
+
+/*
+ * Status.
+ *
+ * Is this in the next 8 bits of the "flags and status" field?
+ */
+#define STATUS_PROTECTED	0x0400	/* Frame is protected (encrypted) */
+#define STATUS_DECRYPT_ERROR	0x0800	/* Error decrypting protected frame */
+#define STATUS_SHORT_PREAMBLE	0x4000	/* Short preamble */
+
+/*
+ * Extended flags.
+ *
+ * Some determined from bug 10637, some determined from bug 9586,
+ * and the ones present in both agree, so we're assuming that
+ * the "remote Peek" protocol and the "Peek tagged" file format
+ * use the same bits (which wouldn't be too surprising, as they
+ * both come from Wildpackets).
+ */
+#define EXT_FLAG_20_MHZ_LOWER			0x00000001
+#define EXT_FLAG_20_MHZ_UPPER			0x00000002
+#define EXT_FLAG_40_MHZ				0x00000004
+#define EXT_FLAGS_BANDWIDTH			0x00000007
+#define EXT_FLAG_HALF_GI			0x00000008
+#define EXT_FLAG_FULL_GI			0x00000010
+#define EXT_FLAGS_GI				0x00000018
+#define EXT_FLAG_AMPDU				0x00000020
+#define EXT_FLAG_AMSDU				0x00000040
+#define EXT_FLAG_802_11ac			0x00000080
+#define EXT_FLAG_MCS_INDEX_USED			0x00000100
+
+/*
+ * XXX - mapping to radiotap, for fields that don't just map to wiretap
+ * fields:
+ *
+ * FLAGS_CONTROL_FRAME: no equivalent - is it useful?  Can just look at FC?
+ *
+ * FLAGS_HAS_CRC_ERROR: flags.{frame failed FCS check}
+ *
+ * FLAGS_HAS_FRAME_ERROR: no equivalent
+ *
+ * STATUS_PROTECTED: flags.{sent/received with WEP encryption}?
+ *
+ * STATUS_DECRYPT_ERROR: no equivalent
+ *
+ * STATUS_SHORT_PREAMBLE: flags.{sent/received with short preamble}
+ *
+ * TAG_PEEKTAGGED_CHANNEL: no equivalent, but could be mapped to Channel
+ *
+ * TAG_PEEKTAGGED_DATA_RATE_OR_MCS_INDEX: Rate if it's a data rate,
+ *   MCS.mcs if it's an MCS index
+ *   Does EXT_FLAG_MCS_INDEX_USED map to the "MCS known" bit ?
+ *
+ * TAG_PEEKTAGGED_SIGNAL_PERC: no equivalent
+ *
+ * TAG_PEEKTAGGED_SIGNAL_DBM: Antenna signal
+ *
+ * TAG_PEEKTAGGED_NOISE_PERC: no equivalent
+ *
+ * TAG_PEEKTAGGED_NOISE_DBM: Antenna noise
+ *
+ * TAG_PEEKTAGGED_CENTER_FREQUENCY: XChannel.freq
+ *
+ * TAG_PEEKTAGGED_UNKNOWN_0x000F - TAG_PEEKTAGGED_UNKNOWN_0x0013: no equivalent
+ *
+ * EXT_FLAG_20_MHZ_LOWER
+ * EXT_FLAG_20_MHZ_UPPER
+ * EXT_FLAG_40_MHZ:
+ *    mcs.bandwidth = 0: none of them set
+ *    mcs.bandwidth = 1: EXT_FLAG_40_MHZ set
+ *    mcs.bandwidth = 2: EXT_FLAG_20_MHZ_LOWER set
+ *    mcs.bandwidth = 3: EXT_FLAG_20_MHZ_UPPER set
+ *    anything else: ???
+ *
+ * EXT_FLAG_HALF_GI: mcs.{guard interval} = 1 (short GI)
+ *
+ * EXT_FLAG_FULL_GI: mcs.{guard interval} = 0 (long GI)
+ *
+ * EXT_FLAG_AMPDU: A-MPDU status present?  What about its value?
+ *
+ * EXT_FLAG_AMSDU: ???
+ *
+ * EXT_FLAG_802_11ac: nothing currently
+ *
+ * EXT_FLAG_MCS_INDEX_USED: see above?
+ */
 
 /* 64-bit time in nanoseconds from the (Windows FILETIME) epoch */
 typedef struct peektagged_utime {
@@ -366,13 +462,6 @@ wtap_open_return_val peektagged_open(wtap *wth, int *err, gchar **err_info)
     return WTAP_OPEN_MINE;
 }
 
-typedef struct {
-    guint32 length;
-    guint32 sliceLength;
-    peektagged_utime timestamp;
-    struct ieee_802_11_phdr ieee_802_11;
-} hdr_info_t;
-
 /*
  * Time stamps appear to be in nanoseconds since the Windows epoch
  * as used in FILETIMEs, i.e. midnight, January 1, 1601.
@@ -397,17 +486,25 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
                        Buffer *buf, int *err, gchar **err_info)
 {
     peektagged_t *peektagged = (peektagged_t *)wth->priv;
-    hdr_info_t hdr_info;
-    int header_len = 0;
+    gboolean read_a_tag = FALSE;
     guint8 tag_value[6];
     guint16 tag;
     gboolean saw_length = FALSE;
+    guint32 length = 0;
+    guint32 sliceLength = 0;
     gboolean saw_timestamp_lower = FALSE;
     gboolean saw_timestamp_upper = FALSE;
+    peektagged_utime timestamp;
+    guint32 ext_flags = 0;
+    gboolean saw_data_rate_or_mcs_index = FALSE;
+    guint32 data_rate_or_mcs_index = 0;
+    struct ieee_802_11_phdr ieee_802_11;
     int skip_len = 0;
     double  t;
 
-    memset(&hdr_info, 0, sizeof(hdr_info_t));
+    timestamp.upper = 0;
+    timestamp.lower = 0;
+    memset(&ieee_802_11, 0, sizeof ieee_802_11);
 
     /* Extract the fields from the packet header */
     do {
@@ -419,12 +516,12 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 		 * Short read if we've read something already;
 		 * just an EOF if we haven't.
 		 */
-		if (header_len != 0)
+		if (read_a_tag)
 		    *err = WTAP_ERR_SHORT_READ;
 	    }
 	    return -1;
 	}
-	header_len += (int) sizeof(tag_value);
+	read_a_tag = TRUE;
 	tag = pletoh16(&tag_value[0]);
 	switch (tag) {
 
@@ -434,7 +531,7 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 		*err_info = g_strdup("peektagged: record has two length fields");
 		return -1;
 	    }
-	    hdr_info.length = pletoh32(&tag_value[2]);
+	    length = pletoh32(&tag_value[2]);
 	    saw_length = TRUE;
 	    break;
 
@@ -444,7 +541,7 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 		*err_info = g_strdup("peektagged: record has two timestamp-lower fields");
 		return -1;
 	    }
-	    hdr_info.timestamp.lower = pletoh32(&tag_value[2]);
+	    timestamp.lower = pletoh32(&tag_value[2]);
 	    saw_timestamp_lower = TRUE;
 	    break;
 
@@ -454,7 +551,7 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 		*err_info = g_strdup("peektagged: record has two timestamp-upper fields");
 		return -1;
 	    }
-	    hdr_info.timestamp.upper = pletoh32(&tag_value[2]);
+	    timestamp.upper = pletoh32(&tag_value[2]);
 	    saw_timestamp_upper = TRUE;
 	    break;
 
@@ -463,36 +560,43 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 	    break;
 
 	case TAG_PEEKTAGGED_CHANNEL:
-	    hdr_info.ieee_802_11.channel = pletoh32(&tag_value[2]);
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_CHANNEL;
+	    ieee_802_11.channel = pletoh32(&tag_value[2]);
 	    break;
 
-	case TAG_PEEKTAGGED_RATE:
-	    hdr_info.ieee_802_11.data_rate = pletoh32(&tag_value[2]);
+	case TAG_PEEKTAGGED_DATA_RATE_OR_MCS_INDEX:
+	    data_rate_or_mcs_index = pletoh32(&tag_value[2]);
+	    saw_data_rate_or_mcs_index = TRUE;
 	    break;
 
 	case TAG_PEEKTAGGED_SIGNAL_PERC:
-	    hdr_info.ieee_802_11.signal_level = pletoh32(&tag_value[2]);
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_SIGNAL_PERCENT;
+	    ieee_802_11.signal_percent = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_SIGNAL_DBM:
-	    /* XXX - not used yet */
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_SIGNAL_DBM;
+	    ieee_802_11.signal_dbm = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_NOISE_PERC:
-	    /* XXX - not used yet */
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_NOISE_PERCENT;
+	    ieee_802_11.noise_percent = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_NOISE_DBM:
-	    /* XXX - not used yet */
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_NOISE_DBM;
+	    ieee_802_11.noise_dbm = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_UNKNOWN_0x000A:
 	    /* XXX - seen in an OmniPeek 802.11n capture; value unknown */
 	    break;
 
-	case TAG_PEEKTAGGED_UNKNOWN_0x000D:
-	    /* XXX - seen in an EtherPeek capture; value unknown */
-	    /* XXX - seen in an AiroPeek/OmniPeek capture; frequency? */
+	case TAG_PEEKTAGGED_CENTER_FREQUENCY:
+	    /* XXX - also seen in an EtherPeek capture; value unknown */
+	    ieee_802_11.presence_flags |= PHDR_802_11_HAS_FREQUENCY;
+	    ieee_802_11.frequency = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_UNKNOWN_0x000E:
@@ -523,12 +627,12 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
 	    /* XXX - seen in an AiroPeek/OmniPeek capture; value unknown */
 	    break;
 
-	case TAG_PEEKTAGGED_UNKNOWN_0x0015:
-	    /* XXX - seen in an AiroPeek/OmniPeek capture; value unknown */
+	case TAG_PEEKTAGGED_EXT_FLAGS:
+	    ext_flags = pletoh32(&tag_value[2]);
 	    break;
 
 	case TAG_PEEKTAGGED_SLICE_LENGTH:
-	    hdr_info.sliceLength = pletoh32(&tag_value[2]);
+	    sliceLength = pletoh32(&tag_value[2]);
 	    break;
 
 	default:
@@ -555,28 +659,28 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
     /*
      * If sliceLength is 0, force it to be the actual length of the packet.
      */
-    if (hdr_info.sliceLength == 0)
-	hdr_info.sliceLength = hdr_info.length;
+    if (sliceLength == 0)
+	sliceLength = length;
 
-    if (hdr_info.sliceLength > WTAP_MAX_PACKET_SIZE) {
+    if (sliceLength > WTAP_MAX_PACKET_SIZE) {
 	/*
 	 * Probably a corrupt capture file; don't blow up trying
 	 * to allocate space for an immensely-large packet.
 	 */
 	*err = WTAP_ERR_BAD_FILE;
 	*err_info = g_strdup_printf("peektagged: File has %u-byte packet, bigger than maximum of %u",
-	    hdr_info.sliceLength, WTAP_MAX_PACKET_SIZE);
+	    sliceLength, WTAP_MAX_PACKET_SIZE);
 	return -1;
     }
 
     phdr->rec_type = REC_TYPE_PACKET;
     phdr->presence_flags = WTAP_HAS_TS|WTAP_HAS_CAP_LEN;
-    phdr->len    = hdr_info.length;
-    phdr->caplen = hdr_info.sliceLength;
+    phdr->len    = length;
+    phdr->caplen = sliceLength;
 
     /* calculate and fill in packet time stamp */
-    t =  (double) hdr_info.timestamp.lower +
-	 (double) hdr_info.timestamp.upper * 4294967296.0;
+    t =  (double) timestamp.lower +
+	 (double) timestamp.upper * 4294967296.0;
     t *= 1.0e-9;
     t -= TIME_FIXUP_CONSTANT;
     phdr->ts.secs  = (time_t) t;
@@ -585,7 +689,65 @@ peektagged_read_packet(wtap *wth, FILE_T fh, struct wtap_pkthdr *phdr,
     switch (wth->file_encap) {
 
     case WTAP_ENCAP_IEEE_802_11_WITH_RADIO:
-	phdr->pseudo_header.ieee_802_11 = hdr_info.ieee_802_11;
+	if (saw_data_rate_or_mcs_index) {
+	    if (ext_flags & EXT_FLAG_MCS_INDEX_USED) {
+		/* It's an MCS index. */
+		ieee_802_11.presence_flags |= PHDR_802_11_HAS_MCS_INDEX;
+		ieee_802_11.mcs_index = data_rate_or_mcs_index;
+
+		/*
+		 * Fill in other 802.11n information.
+		 */
+		switch (ext_flags & EXT_FLAGS_BANDWIDTH) {
+
+		case 0:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_BANDWIDTH;
+		    ieee_802_11.bandwidth = PHDR_802_11_BANDWIDTH_20_MHZ;
+		    break;
+
+		case EXT_FLAG_20_MHZ_LOWER:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_BANDWIDTH;
+		    ieee_802_11.bandwidth = PHDR_802_11_BANDWIDTH_20_20L;
+		    break;
+
+		case EXT_FLAG_20_MHZ_UPPER:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_BANDWIDTH;
+		    ieee_802_11.bandwidth = PHDR_802_11_BANDWIDTH_20_20U;
+		    break;
+
+		case EXT_FLAG_40_MHZ:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_BANDWIDTH;
+		    ieee_802_11.bandwidth = PHDR_802_11_BANDWIDTH_40_MHZ;
+		    break;
+
+		default:
+		    /* Mutually exclusive flags set */
+		    break;
+		}
+
+		switch (ext_flags & EXT_FLAGS_GI) {
+
+		case EXT_FLAG_HALF_GI:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_SHORT_GI;
+		    ieee_802_11.short_gi = 1;
+		    break;
+
+		case EXT_FLAG_FULL_GI:
+		    ieee_802_11.presence_flags |= PHDR_802_11_HAS_SHORT_GI;
+		    ieee_802_11.short_gi = 0;
+		    break;
+
+		default:
+		    /* Mutually exclusive flags set */
+		    break;
+		}
+	    } else {
+		/* It's a data rate */
+		ieee_802_11.presence_flags |= PHDR_802_11_HAS_DATA_RATE;
+		ieee_802_11.data_rate = data_rate_or_mcs_index;
+	    }
+	}
+	phdr->pseudo_header.ieee_802_11 = ieee_802_11;
 	if (peektagged->has_fcs)
 	    phdr->pseudo_header.ieee_802_11.fcs_len = 4;
 	else {

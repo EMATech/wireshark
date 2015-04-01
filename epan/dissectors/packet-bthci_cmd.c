@@ -527,7 +527,7 @@ static const value_string bt_sig_uuid_vals[] = {
     { 0x110C,   "A/V Remote Control Target" },
     { 0x110D,   "Advanced Audio Distribution" },
     { 0x110E,   "A/V Remote Control" },
-    { 0x110F,   "Video Conferencing" },
+    { 0x110F,   "A/V Remote Control Controller" },
     { 0x1110,   "Intercom" },
     { 0x1111,   "Fax" },
     { 0x1112,   "Headset Audio Gateway" },
@@ -1732,10 +1732,10 @@ static const value_string  cmd_flow_ctrl_mode[] = {
 };
 
 static const value_string cmd_le_advertising_types[] = {
-    { 0x00, "Connectable Unidirected Advertising" },
+    { 0x00, "Connectable Undirected Advertising" },
     { 0x01, "Connectable Directed Advertising" },
-    { 0x02, "Scannable Unidirected Advertising" },
-    { 0x03, "Non-Connectable Unidirected Advertising" },
+    { 0x02, "Scannable Undirected Advertising" },
+    { 0x03, "Non-Connectable Undirected Advertising" },
     { 0, NULL }
 };
 
